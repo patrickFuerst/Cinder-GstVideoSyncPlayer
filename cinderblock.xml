@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<cinder>
+<block
+	name="GstSyncedPlayer"
+	id="org.libcinder.GstSyncedPlayer"
+	author="Patrick Fürst"
+	license="MIT"
+	summary="A cinder block for playing back videos in sync over the network with GStreamer."
+	core="true"
+	library="https://gstreamer.freedesktop.org/"
+	>
+	<sourcePattern>src/*.cpp</sourcePattern>
+	<headerPattern>src/*.h</headerPattern>
+	<includePath>src</includePath>
+</block>
+</cinder>
