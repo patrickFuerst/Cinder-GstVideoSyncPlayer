@@ -6,9 +6,10 @@
 #include <gst/net/gstnet.h>
 #include "Osc.h"
 
-//typedef std::pair<std::string, int> ClientKey;
-//typedef std::set<ClientKey> Clients;
-//typedef Clients::iterator clients_iter;
+typedef std::pair<std::string, int> ClientKey;
+typedef std::set<ClientKey> Clients;
+typedef Clients::iterator clients_iter;
+
 using namespace ci;
 using namespace ci::app;
 using namespace ci::linux;
@@ -40,18 +41,20 @@ class GstVideoSyncPlayer : public MovieBase{
         bool                            isMaster();
         //void                            exit(ofEventArgs & args);
         //void                            setPixelFormat( const ofPixelFormat & _pixelFormat );
-       // const Clients&                  getConnectedClients();
+        const Clients&                  getConnectedClients();
     protected:
 
-        //Clients                         m_connectedClients; ///> Our connected clients.
-        shared_ptr<osc::SenderUdp>      m_oscSender;        ///> osc sender.
-        shared_ptr<osc::ReceiverUdp>    m_oscReceiver;      ///> osc receiver.
+        Clients                         m_connectedClients; ///> Our connected clients.
+        shared_ptr<osc::SenderTcp>      m_oscSender;        ///> osc sender.
+        shared_ptr<osc::ReceiverTcp>    m_oscReceiver;      ///> osc receiver.
         osc::UdpSocketRef               m_Socket;
 
         bool                            m_isMaster;         ///> Is the master?
         bool                            m_initialized;      ///> If the player initialized properly ??
     private:
-        
+
+        void                            clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  );
+
         void                            setMasterClock();
         void                            setClientClock( GstClockTime _baseTime );
 

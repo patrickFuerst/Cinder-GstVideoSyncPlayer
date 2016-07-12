@@ -35,10 +35,10 @@ void prepareSettings( SimpleSyncedPlayer::Settings* settings )
 void SimpleSyncedPlayer::keyDown( KeyEvent event )
 {
 
-    if(  event.getChar() == 'p' ){
+    if(  event.getChar() == 'P' ){
         player.pause();
     }
-    else if(  event.getChar() == 's' ){
+    else if(  event.getChar() == 'S' ){
         player.play();
     }
 

@@ -80,14 +80,12 @@ void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const int _cl
     
     m_rcvPort = _oscRcvPort;
 
-    m_Socket =  shared_ptr<udp::socket>(new udp::socket( App::get()->io_service(), udp::endpoint( udp::v4(), m_sndPort ) ));
-    m_Socket->set_option( asio::socket_base::broadcast(true) );
+    m_oscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp( m_sndPort,m_clockIp, m_rcvPort ));
 
-    m_oscSender = shared_ptr<osc::SenderUdp>(new osc::SenderUdp( m_Socket, udp::endpoint( address_v4::broadcast(), m_rcvPort )));
-
-    m_oscReceiver = shared_ptr<osc::ReceiverUdp>(new osc::ReceiverUdp(m_rcvPort));
+    m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_rcvPort));
     m_oscReceiver->bind();
     m_oscReceiver->listen();
+    m_oscReceiver->setOnAcceptFn( std::bind(&GstVideoSyncPlayer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
 
     m_oscReceiver->setListener("/client-loaded" , std::bind(&GstVideoSyncPlayer::clientLoadedMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/client-exited" , std::bind(&GstVideoSyncPlayer::clientExitedMessage , this, std::placeholders::_1 ));
@@ -114,10 +112,11 @@ void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const int _clo
     m_rcvPort = _oscRcvPort;
     m_sndPort = _oscSndPort;
 
-    m_oscSender = shared_ptr<osc::SenderUdp>(new osc::SenderUdp(m_sndPort,m_clockIp,m_rcvPort));
+    m_oscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp(m_sndPort,m_clockIp,m_rcvPort));
     m_oscSender->bind();
+    m_oscSender->connect();
 
-    m_oscReceiver = shared_ptr<osc::ReceiverUdp>(new osc::ReceiverUdp(m_rcvPort));
+    m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_rcvPort));
     m_oscReceiver->bind();
     m_oscReceiver->listen();
 
@@ -245,6 +244,12 @@ void GstVideoSyncPlayer::play()
     m_paused = false;
 
 }
+
+void GstVideoSyncPlayer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  ){
+
+    console() << "New Client with identifier " << identifier << std::endl;
+}
+
 
 void GstVideoSyncPlayer::setMasterClock()
 {
