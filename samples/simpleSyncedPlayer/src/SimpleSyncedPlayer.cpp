@@ -5,7 +5,7 @@
 
 #define MASTER_CLOCK_SYNC_PORT 12366 // The port that will be used from GStreamer for master-slave clock synchronization.
 #define MASTER_OSC_RCV_PORT 12777 //The port that the master listens for incoming osc messages from the clients.
-#define SLAVE_OSC_RCV_PORT 127778 //The port that the slave listens for incoming osc messages from the master.
+#define SLAVE_OSC_RCV_PORT 12778 //The port that the slave listens for incoming osc messages from the master.
 
 using namespace ci;
 using namespace ci::app;

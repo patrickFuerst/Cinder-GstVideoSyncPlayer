@@ -248,7 +248,7 @@ void GstVideoSyncPlayer::clientAccepted( osc::TcpSocketRef socket, uint64_t iden
 
     console() << "New Client with ip address " << socket->remote_endpoint().address() <<" on port " << socket->remote_endpoint().port() << std::endl;
     asio::ip::tcp::endpoint clientEndpoint( socket->remote_endpoint().address(), m_slaveRcvPort );
-    m_connectedClients.push_back( std::make_unique<osc::SenderTcp>(socket, socket->remote_endpoint()) );
+    m_connectedClients.push_back( std::make_unique<osc::SenderTcp>(socket, clientEndpoint ) );
 }
 
 
@@ -314,7 +314,7 @@ void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
 
 void GstVideoSyncPlayer::sendToClients(const osc::Message &m) const {
     for( auto& _client : m_connectedClients){
-        console() << "Sending " << m.getAddress() << " to " << _client->getRemoteEndpoint().address()  << std::endl;
+        console() << "Sending " << m.getAddress() << " to " << _client->getRemoteEndpoint().address() << ":" << _client->getRemoteEndpoint().port() << std::endl;
         _client->send(m);
     }
 }
