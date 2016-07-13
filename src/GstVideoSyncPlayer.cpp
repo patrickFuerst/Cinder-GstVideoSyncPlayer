@@ -18,7 +18,7 @@ GstVideoSyncPlayer::GstVideoSyncPlayer()
     , m_initialized(false)
     , m_movieEnded(false)
     , m_paused(true)
-    , mUniqueClientId(1)
+    , mUniqueClientId(0)
 {
 }
 
@@ -31,6 +31,7 @@ GstVideoSyncPlayer::~GstVideoSyncPlayer()
     }
     else if( !m_isMaster && m_initialized ){
         osc::Message m("/client-exited");
+        m.append(mUniqueClientId);
          if( m_oscSender ){
              m_oscSender->send(m);
          }
@@ -87,17 +88,11 @@ void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const int _cl
    // m_oscSender->connect();
 
     m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_masterRcvPort));
-
     m_oscReceiver->setOnAcceptFn( std::bind(&GstVideoSyncPlayer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
-
     m_oscReceiver->setListener("/client-loaded" , std::bind(&GstVideoSyncPlayer::clientLoadedMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/client-exited" , std::bind(&GstVideoSyncPlayer::clientExitedMessage , this, std::placeholders::_1 ));
-    m_oscReceiver->setListener("/client-init-time" , std::bind(&GstVideoSyncPlayer::clientInitTimeMessage , this, std::placeholders::_1 ));
-
     m_oscReceiver->bind();
     m_oscReceiver->listen();
-
-
 
     getEndedSignal().connect( std::bind( &GstVideoSyncPlayer::movieEnded , this ));
 
@@ -119,20 +114,22 @@ void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const int _clo
     m_masterRcvPort = _oscMasterRcvPort;
     m_slaveRcvPort = _oscSlaveRcvPort;
 
-    m_oscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp(TCP_SENDER_PORT,m_clockIp,_oscMasterRcvPort));
+    m_oscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp(TCP_SENDER_PORT,m_clockIp,m_masterRcvPort));
     m_oscSender->bind();
     m_oscSender->connect();
 
     m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_slaveRcvPort));
-    m_oscReceiver->bind();
-    m_oscReceiver->listen();
 
     m_oscReceiver->setListener("/play" , std::bind(&GstVideoSyncPlayer::playMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/pause" , std::bind(&GstVideoSyncPlayer::pauseMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/loop" , std::bind(&GstVideoSyncPlayer::loopMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/eos" , std::bind(&GstVideoSyncPlayer::eosMessage , this, std::placeholders::_1 ));
+    m_oscReceiver->setListener("/init" , std::bind(&GstVideoSyncPlayer::initMessage , this, std::placeholders::_1 ));
+    m_oscReceiver->setListener("/client-init-time" , std::bind(&GstVideoSyncPlayer::clientInitTimeMessage , this, std::placeholders::_1 ));
 
-    m_initialized = true;
+    m_oscReceiver->bind();
+    m_oscReceiver->listen();
+
 }
 
 //void GstVideoSyncPlayer::loadAsync( std::string _path )
@@ -185,7 +182,8 @@ bool GstVideoSyncPlayer::load( const fs::path& path )
     if( !m_isMaster ){
         osc::Message m;
          m.setAddress("/client-loaded");
-         if( m_oscSender ){
+         m.append(mUniqueClientId);
+        if( m_oscSender ){
             m_oscSender->send(m);
          }
     }
@@ -533,7 +531,11 @@ void GstVideoSyncPlayer::eosMessage(const osc::Message &message ){
     m_movieEnded = true;
     m_paused = true;
 }
-
+void GstVideoSyncPlayer::initMessage(const osc::Message &message ){
+    console() << "GstVideoSyncPlayer CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
+    mUniqueClientId = message.getArgInt32(0);
+    m_initialized = true;
+}
 ci::gl::Texture2dRef GstVideoSyncPlayer::getTexture()
 {
     return mGstPlayer->getVideoTexture();

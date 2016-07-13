@@ -69,6 +69,7 @@ class GstVideoSyncPlayer : public MovieBase{
         void        pauseMessage(const osc::Message &message );
         void        loopMessage(const osc::Message &message );
         void        eosMessage(const osc::Message &message );
+        void        initMessage(const osc::Message &message );
 
         void                            movieEnded();
 
