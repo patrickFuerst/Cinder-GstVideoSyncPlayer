@@ -69,6 +69,7 @@ class GstVideoSyncPlayer : public MovieBase{
         void        pauseMessage(const osc::Message &message );
         void        loopMessage(const osc::Message &message );
         void        eosMessage(const osc::Message &message );
+        void        initMessage(const osc::Message &message );
 
         void                            movieEnded();
 
@@ -81,6 +82,7 @@ class GstVideoSyncPlayer : public MovieBase{
         uint16_t                        m_clockPort;        ///> The port that should be used for the synchronization.
         uint16_t                        m_masterRcvPort;    ///> osc communication.
         uint16_t                        m_slaveRcvPort;     ///> osc communication.
+        int32_t                         mUniqueClientId;     ///> osc communication.
         bool                            m_loop;             ///> Should we loop?
         bool                            m_movieEnded;       ///> Has the video ended??
         gint64                          m_pos;              ///> Position of the player.
