@@ -18,6 +18,7 @@ GstVideoSyncPlayer::GstVideoSyncPlayer()
     , m_initialized(false)
     , m_movieEnded(false)
     , m_paused(true)
+    , mUniqueClientId(1)
 {
 }
 
@@ -86,13 +87,16 @@ void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const int _cl
    // m_oscSender->connect();
 
     m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_masterRcvPort));
-    m_oscReceiver->bind();
-    m_oscReceiver->listen();
+
     m_oscReceiver->setOnAcceptFn( std::bind(&GstVideoSyncPlayer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
 
     m_oscReceiver->setListener("/client-loaded" , std::bind(&GstVideoSyncPlayer::clientLoadedMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/client-exited" , std::bind(&GstVideoSyncPlayer::clientExitedMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/client-init-time" , std::bind(&GstVideoSyncPlayer::clientInitTimeMessage , this, std::placeholders::_1 ));
+
+    m_oscReceiver->bind();
+    m_oscReceiver->listen();
+
 
 
     getEndedSignal().connect( std::bind( &GstVideoSyncPlayer::movieEnded , this ));
@@ -247,8 +251,17 @@ void GstVideoSyncPlayer::play()
 void GstVideoSyncPlayer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  ){
 
     console() << "New Client with ip address " << socket->remote_endpoint().address() <<" on port " << socket->remote_endpoint().port() << std::endl;
+
     asio::ip::tcp::endpoint clientEndpoint( socket->remote_endpoint().address(), m_slaveRcvPort );
-    m_connectedClients.push_back( std::make_unique<osc::SenderTcp>(socket, clientEndpoint ) );
+    m_connectedClients.push_back( std::make_unique<osc::SenderTcp>( TCP_SENDER_PORT, socket->remote_endpoint().address().to_string() , m_slaveRcvPort ) );
+    m_connectedClients.back()->bind();
+    m_connectedClients.back()->connect();
+
+    osc::Message m("/init");
+    m.append((int32_t)mUniqueClientId);
+    m_connectedClients.back()->send(m);
+    mUniqueClientId++;
+
 }
 
 
@@ -399,7 +412,7 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
         console() << " ERROR: Client loaded but master NOT !! Playback wont work properly... " << std::endl;
         return;
     }
-    console() << "GstVideoSyncPlayer: New client connectd" << std::endl;
+    console() << "GstVideoSyncPlayer: New client loaded" << std::endl;
 
     //string _newClient = message.getRemoteIp();
     //int _newClientPort = message.getArgAsInt64(0);
