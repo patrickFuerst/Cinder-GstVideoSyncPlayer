@@ -35,8 +35,8 @@ class GstVideoSyncPlayer : public MovieBase{
         bool                            isPaused();
         bool                            isMovieEnded();
         bool                            isMaster();
-        //void                            exit(ofEventArgs & args);
-        //void                            setPixelFormat( const ofPixelFormat & _pixelFormat );
+        //void                          exit(ofEventArgs & args);
+        //void                          setPixelFormat( const ofPixelFormat & _pixelFormat );
         const Clients&                  getConnectedClients();
     protected:
 
@@ -48,26 +48,31 @@ class GstVideoSyncPlayer : public MovieBase{
         bool                            m_initialized;      ///> If the player initialized properly ??
     private:
 
+        //------------------ MASTER -----------------------
         void                            clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  );
         void                            sendToClients(const osc::Message &m);
         void                            sendToClient(const osc::Message &m, const std::string &address);
         void                            sendToClient(const osc::Message &m, const asio::ip::address &address);
 
         void                            setMasterClock();
-        void                            setClientClock( GstClockTime _baseTime );
 
-        const osc::Message             getPauseMsg() const;
-        const osc::Message             getPlayMsg() const;
-        const osc::Message             getLoopMsg() const;
-        const osc::Message             getEosMsg() const;
+        const osc::Message              getPauseMsg() const;
+        const osc::Message              getPlayMsg() const;
+        const osc::Message              getLoopMsg() const;
+        const osc::Message              getEosMsg() const;
 
         void                            clientLoadedMessage(const osc::Message &message );
         void                            clientExitedMessage(const osc::Message &message );
-        void                            clientInitTimeMessage(const osc::Message &message );
+
+        //------------------ SLAVE -----------------------
+
+        void                            setClientClock( GstClockTime _baseTime );
+
         void                            playMessage(const osc::Message &message );
         void                            pauseMessage(const osc::Message &message );
         void                            loopMessage(const osc::Message &message );
         void                            eosMessage(const osc::Message &message );
+        void                            initTimeMessage(const osc::Message &message );
 
         void                            movieEnded();
 

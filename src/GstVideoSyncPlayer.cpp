@@ -124,8 +124,7 @@ void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const uint16_t
     m_oscReceiver->setListener("/pause" , std::bind(&GstVideoSyncPlayer::pauseMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/loop" , std::bind(&GstVideoSyncPlayer::loopMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/eos" , std::bind(&GstVideoSyncPlayer::eosMessage , this, std::placeholders::_1 ));
-    //m_oscReceiver->setListener("/init" , std::bind(&GstVideoSyncPlayer::initMessage , this, std::placeholders::_1 ));
-    m_oscReceiver->setListener("/client-init-time" , std::bind(&GstVideoSyncPlayer::clientInitTimeMessage , this, std::placeholders::_1 ));
+    m_oscReceiver->setListener("/init-time" , std::bind(&GstVideoSyncPlayer::initTimeMessage , this, std::placeholders::_1 ));
 
     m_oscReceiver->bind();
     m_oscReceiver->listen();
@@ -445,7 +444,7 @@ void GstVideoSyncPlayer::clientExitedMessage(const osc::Message &message ){
    // }
 
 }
-void GstVideoSyncPlayer::clientInitTimeMessage(const osc::Message &message ){
+void GstVideoSyncPlayer::initTimeMessage(const osc::Message &message ){
     console() <<"GstVideoSyncPlayer:  CLIENT RECEIVED MASTER INIT TIME! " <<std::endl;
     m_pos = message.getArgInt64(1);
 
