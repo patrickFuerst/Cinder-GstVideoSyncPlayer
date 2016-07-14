@@ -255,10 +255,10 @@ void GstVideoSyncPlayer::clientAccepted( osc::TcpSocketRef socket, uint64_t iden
     m_connectedClients.back()->bind();
     m_connectedClients.back()->connect();
 
-    osc::Message m("/init");
-    m.append((int32_t)mUniqueClientId);
-    m_connectedClients.back()->send(m);
-    mUniqueClientId++;
+    //osc::Message m("/init");
+    //m.append((int32_t)mUniqueClientId);
+    //m_connectedClients.back()->send(m);
+   // mUniqueClientId++;
 
 }
 
@@ -430,15 +430,22 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
         return;
     }
 
-    if( m_oscSender ){
-       // m_oscSender->setup(_newClient, _newClientPort);
+//    if( m_oscSender ){
+//       // m_oscSender->setup(_newClient, _newClientPort);
+//        osc::Message m;
+//        m.setAddress("/client-init-time");
+//        m.append((int64_t)m_gstClockTime);
+//        m.append((int64_t)m_pos);
+//        //m.setRemoteEndpoint(_newClient, _newClientPort);
+//        m_oscSender->send(m);
+//    }
+     // for now resend init time to all since we can't distinquish clients
         osc::Message m;
         m.setAddress("/client-init-time");
         m.append((int64_t)m_gstClockTime);
         m.append((int64_t)m_pos);
-        //m.setRemoteEndpoint(_newClient, _newClientPort);
-        m_oscSender->send(m);
-    }
+        sendToClients(m);
+
 }
 
 
