@@ -59,7 +59,7 @@ void GstVideoSyncPlayer::movieEnded()
         console() << "GstVideoSyncPlayer: Movie ended.. " << std::endl;
         m_movieEnded = true;
         m_paused = true;
-        sendEosMsg();
+        sendToClients( getEosMsg() );
     }
 }
 
@@ -68,7 +68,7 @@ void GstVideoSyncPlayer::loop( bool _loop )
     m_loop = _loop;
 }
 
-void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const int _clockPort,  const int _oscMasterRcvPort, const int _oscSlaveRcvPort)
+void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const uint16_t _clockPort,  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort)
 {
     if( m_initialized ){
         console() << " Player already initialized as MASTER with Ip : " << _clockIp << std::endl;
@@ -99,7 +99,7 @@ void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const int _cl
     m_initialized = true;
 }
 
-void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const int _clockPort,  const int _oscMasterRcvPort, const int _oscSlaveRcvPort)
+void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const uint16_t _clockPort,  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort)
 {
     if( m_initialized ){
         console() << " Player already initialized as SLAVE with Ip : " << _clockIp << std::endl;
@@ -124,7 +124,7 @@ void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const int _clo
     m_oscReceiver->setListener("/pause" , std::bind(&GstVideoSyncPlayer::pauseMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/loop" , std::bind(&GstVideoSyncPlayer::loopMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/eos" , std::bind(&GstVideoSyncPlayer::eosMessage , this, std::placeholders::_1 ));
-    m_oscReceiver->setListener("/init" , std::bind(&GstVideoSyncPlayer::initMessage , this, std::placeholders::_1 ));
+    //m_oscReceiver->setListener("/init" , std::bind(&GstVideoSyncPlayer::initMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/client-init-time" , std::bind(&GstVideoSyncPlayer::clientInitTimeMessage , this, std::placeholders::_1 ));
 
     m_oscReceiver->bind();
@@ -210,7 +210,7 @@ void GstVideoSyncPlayer::update()
         gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
         ///> Let the slaves know that they should start over..
-        sendLoopMsg();
+        sendToClients( getLoopMsg() );
 
         m_movieEnded = false;
         m_paused = false;
@@ -232,13 +232,13 @@ void GstVideoSyncPlayer::play()
         ///> ..and start playing the master..
         gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
         gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-        sendLoopMsg();
+        sendToClients( getLoopMsg() );
     }
     else{
         gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
         gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-        sendPlayMsg();
+        sendToClients( getPlayMsg() );
     }
 
     m_movieEnded = false;
@@ -248,20 +248,18 @@ void GstVideoSyncPlayer::play()
 
 void GstVideoSyncPlayer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  ){
 
-    console() << "New Client with ip address " << socket->remote_endpoint().address() <<" on port " << socket->remote_endpoint().port() << std::endl;
+    std::string addressString = socket->remote_endpoint().address().to_string();
+    console() << "New Client with ip address " << addressString <<" on port " << socket->remote_endpoint().port() << std::endl;
 
-    asio::ip::tcp::endpoint clientEndpoint( socket->remote_endpoint().address(), m_slaveRcvPort );
-    m_connectedClients.push_back( std::make_unique<osc::SenderTcp>( TCP_SENDER_PORT, socket->remote_endpoint().address().to_string() , m_slaveRcvPort ) );
-    m_connectedClients.back()->bind();
-    m_connectedClients.back()->connect();
-
-    //osc::Message m("/init");
-    //m.append((int32_t)mUniqueClientId);
-    //m_connectedClients.back()->send(m);
-   // mUniqueClientId++;
+    auto element = m_connectedClients.emplace( std::piecewise_construct, std::forward_as_tuple(addressString) , std::forward_as_tuple(TCP_SENDER_PORT, addressString , m_slaveRcvPort)  );
+    if( element.second ){
+        element.first->second.bind();
+        element.first->second.connect();
+    }else{
+        console() << "Client with address: " << addressString << " already exists." << std::endl;
+    }
 
 }
-
 
 void GstVideoSyncPlayer::setMasterClock()
 {
@@ -323,12 +321,31 @@ void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
 //}
 
 
-void GstVideoSyncPlayer::sendToClients(const osc::Message &m) const {
-    for( auto& _client : m_connectedClients){
-        console() << "Sending " << m.getAddress() << " to " << _client->getRemoteEndpoint().address() << ":" << _client->getRemoteEndpoint().port() << std::endl;
-        _client->send(m);
+void GstVideoSyncPlayer::sendToClients(const osc::Message &m)
+{
+    for( auto& clientKey : m_connectedClients){
+        auto& client = clientKey.second;
+        console() << "Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() << std::endl;
+        client.send(m);
     }
 }
+void GstVideoSyncPlayer::sendToClient( const osc::Message &m, const asio::ip::address &address )
+{
+    sendToClient(m,address.to_string());
+}
+
+void GstVideoSyncPlayer::sendToClient( const osc::Message &m, const std::string &address )
+{
+    const auto& clientKey = m_connectedClients.find(address);
+    if(clientKey != m_connectedClients.end() ){
+        auto& client = clientKey->second;
+        console() << "Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() << std::endl;
+        client.send(m);
+    } else{
+        console() << "Couldn't find client with address: " << address << std::endl;
+    }
+}
+
 
 void GstVideoSyncPlayer::pause()
 {
@@ -353,53 +370,41 @@ void GstVideoSyncPlayer::pause()
 
         m_paused = true;
         
-        sendPauseMsg();
+        sendToClients( getPauseMsg() );
     }
 }
 
-void GstVideoSyncPlayer::sendPauseMsg(){
-
-    if( !m_isMaster || !m_initialized ) return;
-
-    console() << "GstVideoSyncPlayer: Sending PLAY to clients " << std::endl;
+const osc::Message GstVideoSyncPlayer::getPauseMsg() const
+{
     osc::Message m;
     m.setAddress("/pause");
     m.append((int64_t)m_pos);
-    sendToClients(m);
+    return m;
 }
 
-void GstVideoSyncPlayer::sendPlayMsg()
+const osc::Message GstVideoSyncPlayer::getPlayMsg() const
 {
-    if( !m_isMaster || !m_initialized  ) return;
-
-    console() << "GstVideoSyncPlayer: Sending PLAY to clients " << std::endl;
     osc::Message m;
     m.setAddress("/play");
     m.append((int64_t)m_gstClockTime);
-    sendToClients(m);
+    return m;
 
 }
 
-void GstVideoSyncPlayer::sendLoopMsg()
+const osc::Message GstVideoSyncPlayer::getLoopMsg() const
 {
-    if( !m_isMaster || !m_initialized  ) return;
-
-    console() << "GstVideoSyncPlayer: Sending LOOP to clients " << std::endl;
     osc::Message m;
     m.setAddress("/loop");
     m.append((int64_t)m_gstClockTime);
-    sendToClients(m);
+    return m;
 
 }
 
-void GstVideoSyncPlayer::sendEosMsg()
+const osc::Message GstVideoSyncPlayer::getEosMsg() const
 {
-    if( !m_isMaster || !m_initialized  ) return;
-
-    console() << "GstVideoSyncPlayer: Sending EOS to clients " << std::endl;
     osc::Message m;
     m.setAddress("/eos");
-    sendToClients(m);
+    return m;
 
 }
 
@@ -412,39 +417,17 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
     }
     console() << "GstVideoSyncPlayer: New client loaded" << std::endl;
 
-    //string _newClient = message.getRemoteIp();
-    //int _newClientPort = message.getArgAsInt64(0);
-
-   // ClientKey _newClientKey(m.getRemoteIp(), _newClientPort);
-
-    //std::pair<clients_iter, bool> ret;
-    //ret = m_connectedClients.insert(_newClientKey);
-//    if( ret.second == false ){
-//        console() << " Client with Ip : " << _newClient << " and Port : " << _newClientPort << " already exists! PLAYBACK will NOT work properly" << std::endl;
-//        return;
-//    }
-
     ///> If the master is paused when the client connects pause the client also.
     if( m_paused ){
-        sendPauseMsg();
+        sendToClient(getPauseMsg(), message.getSenderIpAddress() );
         return;
     }
 
-//    if( m_oscSender ){
-//       // m_oscSender->setup(_newClient, _newClientPort);
-//        osc::Message m;
-//        m.setAddress("/client-init-time");
-//        m.append((int64_t)m_gstClockTime);
-//        m.append((int64_t)m_pos);
-//        //m.setRemoteEndpoint(_newClient, _newClientPort);
-//        m_oscSender->send(m);
-//    }
-     // for now resend init time to all since we can't distinquish clients
-        osc::Message m;
-        m.setAddress("/client-init-time");
-        m.append((int64_t)m_gstClockTime);
-        m.append((int64_t)m_pos);
-        sendToClients(m);
+    osc::Message m;
+    m.setAddress("/client-init-time");
+    m.append((int64_t)m_gstClockTime);
+    m.append((int64_t)m_pos);
+    sendToClients(m);
 
 }
 
@@ -452,7 +435,6 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
 void GstVideoSyncPlayer::clientExitedMessage(const osc::Message &message ){
 
     console() <<"GstVideoSyncPlayer: Disconnecting client" << std::endl;
-
    // ClientKey _clientExit(_exitingClient, _exitingClientPort);
     //clients_iter it = m_connectedClients.find(_clientExit);
 
@@ -538,11 +520,11 @@ void GstVideoSyncPlayer::eosMessage(const osc::Message &message ){
     m_movieEnded = true;
     m_paused = true;
 }
-void GstVideoSyncPlayer::initMessage(const osc::Message &message ){
-    console() << "GstVideoSyncPlayer CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
-    mUniqueClientId = message.getArgInt32(0);
-    m_initialized = true;
-}
+//void GstVideoSyncPlayer::initMessage(const osc::Message &message ){
+//    console() << "GstVideoSyncPlayer CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
+//    mUniqueClientId = message.getArgInt32(0);
+//    m_initialized = true;
+//}
 ci::gl::Texture2dRef GstVideoSyncPlayer::getTexture()
 {
     return mGstPlayer->getVideoTexture();

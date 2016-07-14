@@ -11,8 +11,7 @@ using namespace ci::app;
 using namespace ci::linux;
 using namespace std;
 
-//typedef std::pair<osc::SenderTcp> ClientKey;
-typedef std::vector<std::unique_ptr<osc::SenderTcp>> Clients;
+typedef std::map<std::string, osc::SenderTcp> Clients;
 typedef Clients::iterator clients_iter;
 
 class GstVideoSyncPlayer : public MovieBase{
@@ -22,8 +21,8 @@ class GstVideoSyncPlayer : public MovieBase{
         GstVideoSyncPlayer();
         ~GstVideoSyncPlayer();
 
-        void                            initAsMaster( const std::string _clockIp, const int _clockPort, const int _oscMasterRcvPort, const int _oscSlaveRcvPort);
-        void                            initAsSlave( const std::string _clockIp, const int _clockPort, const int _oscMasterRcvPort, const int _oscSlaveRcvPort );
+        void                            initAsMaster( const std::string _clockIp, const uint16_t _clockPort, const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort);
+        void                            initAsSlave( const std::string _clockIp, const uint16_t _clockPort, const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort );
         void                            loadAsync( const fs::path& path );
         bool                            load( const fs::path& path );
         void                            play();
@@ -31,11 +30,8 @@ class GstVideoSyncPlayer : public MovieBase{
         void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
         void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
         void                            loop( bool _loop );
-        void                            setVolume( float _volume );
-        float                           getWidth();
-        float                           getHeight();
         void                            pause();
-        gl::Texture2dRef                     getTexture();
+        gl::Texture2dRef                getTexture();
         bool                            isPaused();
         bool                            isMovieEnded();
         bool                            isMaster();
@@ -53,23 +49,25 @@ class GstVideoSyncPlayer : public MovieBase{
     private:
 
         void                            clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  );
-        void                            sendToClients(const osc::Message &m) const;
+        void                            sendToClients(const osc::Message &m);
+        void                            sendToClient(const osc::Message &m, const std::string &address);
+        void                            sendToClient(const osc::Message &m, const asio::ip::address &address);
 
         void                            setMasterClock();
         void                            setClientClock( GstClockTime _baseTime );
 
-        void                            sendPauseMsg();
-        void                            sendPlayMsg();
-        void                            sendLoopMsg();
-        void                            sendEosMsg();
-        void                    clientLoadedMessage(const osc::Message &message );
-        void        clientExitedMessage(const osc::Message &message );
-        void        clientInitTimeMessage(const osc::Message &message );
-        void        playMessage(const osc::Message &message );
-        void        pauseMessage(const osc::Message &message );
-        void        loopMessage(const osc::Message &message );
-        void        eosMessage(const osc::Message &message );
-        void        initMessage(const osc::Message &message );
+        const osc::Message             getPauseMsg() const;
+        const osc::Message             getPlayMsg() const;
+        const osc::Message             getLoopMsg() const;
+        const osc::Message             getEosMsg() const;
+
+        void                            clientLoadedMessage(const osc::Message &message );
+        void                            clientExitedMessage(const osc::Message &message );
+        void                            clientInitTimeMessage(const osc::Message &message );
+        void                            playMessage(const osc::Message &message );
+        void                            pauseMessage(const osc::Message &message );
+        void                            loopMessage(const osc::Message &message );
+        void                            eosMessage(const osc::Message &message );
 
         void                            movieEnded();
 
