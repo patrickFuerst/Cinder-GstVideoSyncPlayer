@@ -423,7 +423,7 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
     }
 
     osc::Message m;
-    m.setAddress("/client-init-time");
+    m.setAddress("/init-time");
     m.append((int64_t)m_gstClockTime);
     m.append((int64_t)m_pos);
     sendToClients(m);
