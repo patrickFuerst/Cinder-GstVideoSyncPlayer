@@ -67,7 +67,7 @@ class GstVideoSyncPlayer : public MovieBase{
         //------------------ SLAVE -----------------------
 
         void                            setClientClock( GstClockTime _baseTime );
-
+        void                            setClientBaseTime( GstClockTime _baseTime );
         void                            playMessage(const osc::Message &message );
         void                            pauseMessage(const osc::Message &message );
         void                            loopMessage(const osc::Message &message );
@@ -80,7 +80,7 @@ class GstVideoSyncPlayer : public MovieBase{
 
         GstClock*                       m_gstClock;         ///> The network clock.
         GstElement*                     m_gstPipeline;      ///> The running pipeline.
-        GstClockTime                    m_gstClockTime;     ///> The base time.
+        GstClockTime                    mGstBaseTime;     ///> The base time.
         std::string                     m_clockIp;          ///> The IP of the server.
         uint16_t                        m_clockPort;        ///> The port that should be used for the synchronization.
         uint16_t                        m_masterRcvPort;    ///> osc communication.

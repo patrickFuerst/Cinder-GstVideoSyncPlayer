@@ -8,7 +8,7 @@ using namespace asio::ip;
 GstVideoSyncPlayer::GstVideoSyncPlayer()
     : m_gstClock(NULL)
     , m_gstPipeline(NULL)
-    , m_gstClockTime(0)
+    , mGstBaseTime(0)
     , m_isMaster(false)
     , m_clockIp("127.0.0.1")
     , m_clockPort(1234)
@@ -271,26 +271,23 @@ void GstVideoSyncPlayer::setMasterClock()
 
 
     ///> Grab the base time..
-    m_gstClockTime = gst_clock_get_time(m_gstClock);
+    mGstBaseTime = gst_clock_get_time(m_gstClock);
 
     ///> and explicitely set it for this pipeline after disabling the internal handling of time.
     gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
-    gst_element_set_base_time(m_gstPipeline, m_gstClockTime);
+    gst_element_set_base_time(m_gstPipeline, mGstBaseTime);
 }
 
 void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
 {
     if( m_isMaster ) return;
 
-    ///> The arrived master base_time.
-    m_gstClockTime = _baseTime;
-
     ///> Remove any previously used clock.
     if(m_gstClock) g_object_unref((GObject*) m_gstClock);
     m_gstClock = NULL;
 
     ///> Create the slave network clock with an initial time.
-    m_gstClock = gst_net_client_clock_new(NULL, m_clockIp.c_str(), m_clockPort, m_gstClockTime);
+    m_gstClock = gst_net_client_clock_new(NULL, m_clockIp.c_str(), m_clockPort, _baseTime);
 
     ///> Be explicit.
     gst_pipeline_use_clock(GST_PIPELINE(m_gstPipeline), m_gstClock);
@@ -298,9 +295,21 @@ void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
 
     ///> Disable internal handling of time and set the base time.
     gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
-    gst_element_set_base_time(m_gstPipeline,  m_gstClockTime);
+    gst_element_set_base_time(m_gstPipeline,  mGstBaseTime);
 
 }
+
+void GstVideoSyncPlayer::setClientBaseTime( GstClockTime _baseTime )
+{
+    if( m_isMaster ) return;
+
+    ///> The arrived master base_time.
+    mGstBaseTime = _baseTime;
+
+    gst_element_set_base_time(m_gstPipeline,  mGstBaseTime);
+
+}
+
 
 //void GstVideoSyncPlayer::draw( ofPoint _pos, float _width, float _height )
 //{
@@ -385,7 +394,7 @@ const osc::Message GstVideoSyncPlayer::getPlayMsg() const
 {
     osc::Message m;
     m.setAddress("/play");
-    m.append((int64_t)m_gstClockTime);
+    m.append((int64_t)mGstBaseTime);
     return m;
 
 }
@@ -394,7 +403,7 @@ const osc::Message GstVideoSyncPlayer::getLoopMsg() const
 {
     osc::Message m;
     m.setAddress("/loop");
-    m.append((int64_t)m_gstClockTime);
+    m.append((int64_t)mGstBaseTime);
     return m;
 
 }
@@ -416,17 +425,18 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
     }
     console() << "GstVideoSyncPlayer: New client loaded" << std::endl;
 
+    osc::Message m;
+    m.setAddress("/init-time");
+    m.append((int64_t)mGstBaseTime);
+    m.append((int64_t)m_pos);
+    sendToClient(m, message.getSenderIpAddress() );
+
+
     ///> If the master is paused when the client connects pause the client also.
     if( m_paused ){
         sendToClient(getPauseMsg(), message.getSenderIpAddress() );
         return;
     }
-
-    osc::Message m;
-    m.setAddress("/init-time");
-    m.append((int64_t)m_gstClockTime);
-    m.append((int64_t)m_pos);
-    sendToClients(m);
 
 }
 
@@ -451,7 +461,9 @@ void GstVideoSyncPlayer::initTimeMessage(const osc::Message &message ){
     ///> Initial base time for the clients.
     ///> Set the slave network clock that is going to poll the master.
     setClientClock((GstClockTime)message.getArgInt64(0));
-
+    console() << "Wait 0.5 sec to sync clock. \n";
+    sleep(0.5);
+    setClientBaseTime((GstClockTime)message.getArgInt64(0));
     ///> And start playing..
     gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
     gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
@@ -463,7 +475,7 @@ void GstVideoSyncPlayer::playMessage(const osc::Message &message ){
     console() << "GstVideoSyncPlayer: CLIENT ---> PLAY " << std::endl;
 
     ///> Set the base time of the slave network clock.
-    setClientClock(message.getArgInt64(0));
+    setClientBaseTime(message.getArgInt64(0));
 
     ///> And start playing..
     gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
@@ -504,7 +516,7 @@ void GstVideoSyncPlayer::loopMessage(const osc::Message &message ){
     gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
     ///> Set the slave clock and base_time.
-    setClientClock(message.getArgInt64(0));
+    setClientBaseTime(message.getArgInt64(0));
 
     ///> and go..
     gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
