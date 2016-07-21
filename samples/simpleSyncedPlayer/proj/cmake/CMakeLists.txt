@@ -32,7 +32,7 @@ set( INC_DIR
 )
 
 find_package(PkgConfig)
-pkg_check_modules( GST_NET gstreamer-net)
+pkg_search_module( GST_NET REQUIRED gstreamer-net gstreamer-net-1.0)
 
 ci_make_app(
 	SOURCES     ${SRC_FILES}
