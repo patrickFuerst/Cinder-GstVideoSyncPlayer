@@ -31,10 +31,12 @@ set( INC_DIR
         ${OSC_BLOCK_DIR}/src
 )
 
+find_package(PkgConfig)
+pkg_check_modules( GST_NET gstreamer-net)
 
 ci_make_app(
 	SOURCES     ${SRC_FILES}
     INCLUDES    ${INC_DIR}
-    LIBRARIES   "gstnet-1.0"
+    LIBRARIES   ${GST_NET_LDFLAGS}
     CINDER_PATH ${CINDER_PATH}
 )
