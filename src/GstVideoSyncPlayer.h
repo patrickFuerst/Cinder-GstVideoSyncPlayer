@@ -23,7 +23,7 @@ class GstVideoSyncPlayer : public GstPlayer{
         void                            initAsMaster( const std::string _clockIp, const uint16_t _clockPort, const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort);
         void                            initAsSlave( const std::string _clockIp, const uint16_t _clockPort, const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort );
         void                            loadAsync( const fs::path& path );
-        bool                            load( const fs::path& path );
+        void                            load( const std::string& path );
         void                            play();
         void                            update();
         void                            draw( vec2 _pos, float _width = -1, float _height = -1 );

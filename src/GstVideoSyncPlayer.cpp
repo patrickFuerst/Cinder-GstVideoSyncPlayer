@@ -153,10 +153,10 @@ void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const uint16_t
 //
 //}
 
-bool GstVideoSyncPlayer::load( const fs::path& path )
+void GstVideoSyncPlayer::load( const std::string& path )
 {
 
-    GstPlayer::load(path.string());
+    GstPlayer::load(path);
 
     ///> Now that we have loaded we can grab the pipeline..
     m_gstPipeline = GstPlayer::getPipeline();
@@ -187,8 +187,6 @@ bool GstVideoSyncPlayer::load( const fs::path& path )
             m_oscSender->send(m);
          }
     }
-
-    //return _loaded;
 }
 
 
