@@ -20,6 +20,7 @@ GstVideoSyncPlayer::GstVideoSyncPlayer()
     , m_paused(true)
     , mUniqueClientId(0)
 {
+    GstPlayer::initialize();
 }
 
 GstVideoSyncPlayer::~GstVideoSyncPlayer()
@@ -155,10 +156,10 @@ void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const uint16_t
 bool GstVideoSyncPlayer::load( const fs::path& path )
 {
 
-    MovieBase::initFromPath(path);
+    GstPlayer::load(path.string());
 
     ///> Now that we have loaded we can grab the pipeline..
-    m_gstPipeline = mGstPlayer->getPipeline();
+    m_gstPipeline = GstPlayer::getPipeline();
 
     ///> Since we will provide a network clock for the synchronization
     ///> we disable here the internal handling of the base time.
@@ -538,7 +539,7 @@ void GstVideoSyncPlayer::eosMessage(const osc::Message &message ){
 //}
 ci::gl::Texture2dRef GstVideoSyncPlayer::getTexture()
 {
-    return mGstPlayer->getVideoTexture();
+    return GstPlayer::getVideoTexture();
 }
 
 bool GstVideoSyncPlayer::isPaused()

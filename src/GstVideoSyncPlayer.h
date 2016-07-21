@@ -1,20 +1,19 @@
 #pragma once
 
 #include "cinder/gl/gl.h"
-#include "cinder/linux/Movie.h"
 #include "cinder/linux/GstPlayer.h"
 #include <gst/net/gstnet.h>
 #include "Osc.h"
 
 using namespace ci;
 using namespace ci::app;
-using namespace ci::linux;
+using namespace gst::video;
 using namespace std;
 
 typedef std::map<std::string, osc::SenderTcp> Clients;
 typedef Clients::iterator clients_iter;
 
-class GstVideoSyncPlayer : public MovieBase{
+class GstVideoSyncPlayer : public GstPlayer{
 
     public:
 
