@@ -35,6 +35,6 @@ set( INC_DIR
 ci_make_app(
 	SOURCES     ${SRC_FILES}
     INCLUDES    ${INC_DIR}
-    LIB_DEPENDS "gstnet-1.0"
+    LIBRARIES   "gstnet-1.0"
     CINDER_PATH ${CINDER_PATH}
 )
