@@ -48,7 +48,8 @@ class GstVideoSyncPlayer : public GstPlayer{
     private:
 
         //------------------ ERROR Handling ---------------
-        void                            socketError( const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint );
+        void                            socketErrorMaster( const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint );
+        void                            socketErrorSlave( const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint );
 
         //------------------ MASTER -----------------------
         void                            clientAccepted( osc::TcpSocketRef socket, uint64_t identifier   );

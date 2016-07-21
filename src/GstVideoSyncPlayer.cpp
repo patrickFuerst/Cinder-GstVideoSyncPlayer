@@ -99,7 +99,7 @@ void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const uint16_
    // m_oscSender->connect();
 
     m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_masterRcvPort));
-    m_oscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoSyncPlayer::socketError, this, std::placeholders::_1,std::placeholders::_2, std::placeholders::_3) );
+    m_oscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoSyncPlayer::socketErrorMaster, this, std::placeholders::_1,std::placeholders::_2, std::placeholders::_3) );
     m_oscReceiver->setOnAcceptFn( std::bind(&GstVideoSyncPlayer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
     m_oscReceiver->setListener("/client-loaded" , std::bind(&GstVideoSyncPlayer::clientLoadedMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/client-exited" , std::bind(&GstVideoSyncPlayer::clientExitedMessage , this, std::placeholders::_1 ));
@@ -132,6 +132,7 @@ void GstVideoSyncPlayer::initAsSlave( const std::string _clockIp, const uint16_t
 
     m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_slaveRcvPort));
 
+    m_oscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoSyncPlayer::socketErrorSlave, this, std::placeholders::_1,std::placeholders::_2, std::placeholders::_3) );
     m_oscReceiver->setListener("/play" , std::bind(&GstVideoSyncPlayer::playMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/pause" , std::bind(&GstVideoSyncPlayer::pauseMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/loop" , std::bind(&GstVideoSyncPlayer::loopMessage , this, std::placeholders::_1 ));
@@ -255,7 +256,7 @@ void GstVideoSyncPlayer::play()
 
 }
 
-void GstVideoSyncPlayer::socketError(  const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint )
+void GstVideoSyncPlayer::socketErrorMaster(  const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint )
 {
     auto address = endpoint.address().to_string();
     auto clientEntry = m_connectedClients.find( address );
@@ -268,6 +269,18 @@ void GstVideoSyncPlayer::socketError(  const asio::error_code &error, uint64_t i
     }else{
         console() << "Couldn't find client for id: " << address << " and errror: " << error.message() << std::endl;
     }
+
+}
+
+void GstVideoSyncPlayer::socketErrorSlave(  const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint )
+{
+    auto address = endpoint.address().to_string();
+    console() << "Socket Error for Master with ip address " << address <<". Error:  " << error.message() << std::endl;
+
+    //close recv and sender
+    // TODO add solution for reconnecting
+    m_oscReceiver->close();
+    m_oscSender->close();
 
 }
 
