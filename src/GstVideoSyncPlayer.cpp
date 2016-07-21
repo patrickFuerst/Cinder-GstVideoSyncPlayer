@@ -38,6 +38,16 @@ GstVideoSyncPlayer::~GstVideoSyncPlayer()
          }
          m_initialized = false;
     }
+
+    if(m_oscReceiver)
+        m_oscReceiver->close();
+
+    if(m_oscSender)
+        m_oscSender->close();
+
+    for(auto it = m_connectedClients.begin(); it != m_connectedClients.end(); it++){
+        it->second.close();
+    }
 }
 
 //void GstVideoSyncPlayer::exit(ofEventArgs & args)
@@ -89,6 +99,7 @@ void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const uint16_
    // m_oscSender->connect();
 
     m_oscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(m_masterRcvPort));
+    m_oscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoSyncPlayer::socketError, this, std::placeholders::_1,std::placeholders::_2, std::placeholders::_3) );
     m_oscReceiver->setOnAcceptFn( std::bind(&GstVideoSyncPlayer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
     m_oscReceiver->setListener("/client-loaded" , std::bind(&GstVideoSyncPlayer::clientLoadedMessage , this, std::placeholders::_1 ));
     m_oscReceiver->setListener("/client-exited" , std::bind(&GstVideoSyncPlayer::clientExitedMessage , this, std::placeholders::_1 ));
@@ -241,6 +252,22 @@ void GstVideoSyncPlayer::play()
 
     m_movieEnded = false;
     m_paused = false;
+
+}
+
+void GstVideoSyncPlayer::socketError(  const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint )
+{
+    auto address = endpoint.address().to_string();
+    auto clientEntry = m_connectedClients.find( address );
+    if(clientEntry != m_connectedClients.end() ){
+        auto& client = clientEntry->second;
+        console() << "Socket Error for Client with ip address " << address <<". Error:  " << error.message() << std::endl;
+        client.close();
+        m_connectedClients.erase(clientEntry);
+        m_oscReceiver->closeConnection(identifier);
+    }else{
+        console() << "Couldn't find client for id: " << address << " and errror: " << error.message() << std::endl;
+    }
 
 }
 

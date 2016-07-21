@@ -47,8 +47,11 @@ class GstVideoSyncPlayer : public GstPlayer{
         bool                            m_initialized;      ///> If the player initialized properly ??
     private:
 
+        //------------------ ERROR Handling ---------------
+        void                            socketError( const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint );
+
         //------------------ MASTER -----------------------
-        void                            clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  );
+        void                            clientAccepted( osc::TcpSocketRef socket, uint64_t identifier   );
         void                            sendToClients(const osc::Message &m);
         void                            sendToClient(const osc::Message &m, const std::string &address);
         void                            sendToClient(const osc::Message &m, const asio::ip::address &address);

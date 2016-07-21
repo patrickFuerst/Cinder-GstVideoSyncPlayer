@@ -46,7 +46,7 @@ void SimpleSyncedPlayer::keyDown( KeyEvent event )
 void SimpleSyncedPlayer::setup(){
 
 
-    fs::path videoPath = getAssetPath("test_long.mov");
+    fs::path videoPath = getAssetPath("fingers.mov");
 
     ///> Call the appropriate init function depending on if you are on a master or a slave.
     ///> The IP should be the same in both cases and it refers to the IP the master is running.
