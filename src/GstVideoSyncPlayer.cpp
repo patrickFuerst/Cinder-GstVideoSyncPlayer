@@ -287,7 +287,7 @@ void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
     m_gstClock = NULL;
 
     ///> Create the slave network clock with an initial time.
-    m_gstClock = gst_net_client_clock_new(NULL, m_clockIp.c_str(), m_clockPort, _baseTime);
+    m_gstClock = gst_ntp_clock_new(NULL, m_clockIp.c_str(), m_clockPort, _baseTime);
 
     ///> Be explicit.
     gst_pipeline_use_clock(GST_PIPELINE(m_gstPipeline), m_gstClock);
