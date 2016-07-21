@@ -286,7 +286,7 @@ void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
     m_gstClock = NULL;
 
     ///> Create the slave network clock with an initial time.
-    m_gstClock = gst_ntp_clock_new(NULL, m_clockIp.c_str(), m_clockPort, _baseTime);
+    m_gstClock = gst_net_client_clock_new(NULL, m_clockIp.c_str(), m_clockPort, _baseTime);
 
     ///> Be explicit.
     gst_pipeline_use_clock(GST_PIPELINE(m_gstPipeline), m_gstClock);
@@ -461,7 +461,9 @@ void GstVideoSyncPlayer::initTimeMessage(const osc::Message &message ){
     ///> Set the slave network clock that is going to poll the master.
     setClientClock((GstClockTime)message.getArgInt64(0));
     console() << "Wait 0.5 sec to sync clock. \n";
-    sleep(0.5);
+    using  namespace std::literals::chrono_literals;
+    std::this_thread::sleep_for(0.5s);
+
     setClientBaseTime((GstClockTime)message.getArgInt64(0));
     ///> And start playing..
     gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
