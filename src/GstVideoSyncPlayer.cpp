@@ -65,7 +65,6 @@ void GstVideoSyncPlayer::movieEnded()
 {
     console() << "GstVideoSyncPlayer: Movie ended.. " << std::endl;
     if( ! GstPlayer::isPaused() ){
-
         resetBaseTime();
         sendToClients( getLoopMsg() );
     }else{
@@ -408,7 +407,6 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
     m.append((int64_t)m_pos);
     sendToClient(m, message.getSenderIpAddress() );
 
-
     ///> If the master is paused when the client connects pause the client also.
     if( GstPlayer::isPaused() ){
         sendToClient(getPauseMsg(), message.getSenderIpAddress() );
@@ -443,10 +441,6 @@ void GstVideoSyncPlayer::initTimeMessage(const osc::Message &message ){
     ///> Initial base time for the clients.
     ///> Set the slave network clock that is going to poll the master.
     setClientClock((GstClockTime)message.getArgInt64(0));
-    console() << "Wait 0.5 sec to sync clock. \n";
-    using  namespace std::literals::chrono_literals;
-    std::this_thread::sleep_for(0.5s);
-
     setClientBaseTime((GstClockTime)message.getArgInt64(0));
 
 }
@@ -455,10 +449,7 @@ void GstVideoSyncPlayer::playMessage(const osc::Message &message ){
 
     ///> Set the base time of the slave network clock.
     setClientBaseTime(message.getArgInt64(0));
-    console() << " current time: " << gst_clock_get_time(m_gstClock) << std::endl;
-    console() << " set basetime: " << message.getArgInt64(0) << std::endl;
     GstPlayer::play();
-    console() << " get basetime: " << gst_element_get_base_time(m_gstPipeline) << std::endl;
 
     ///> and go..
     //gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
@@ -490,10 +481,10 @@ void GstVideoSyncPlayer::loopMessage(const osc::Message &message ){
     console() << "GstVideoSyncPlayer: CLIENT ---> LOOP " << std::endl;
 
     ///> Set the slave base time.
-    GstPlayer::stop();
+   // GstPlayer::stop();
     setClientBaseTime(message.getArgInt64(0));
     seekToTime(0);
-    GstPlayer::play();
+    //GstPlayer::play();
 
 }
 void GstVideoSyncPlayer::eosMessage(const osc::Message &message ){
