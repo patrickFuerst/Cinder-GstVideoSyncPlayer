@@ -287,6 +287,7 @@ void GstVideoSyncPlayer::setClientBaseTime( GstClockTime _baseTime )
 
     ///> The arrived master base_time.
     mGstBaseTime = _baseTime;
+    gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
     gst_element_set_base_time(m_gstPipeline,  mGstBaseTime);
 
 }
@@ -447,9 +448,6 @@ void GstVideoSyncPlayer::initTimeMessage(const osc::Message &message ){
     std::this_thread::sleep_for(0.5s);
 
     setClientBaseTime((GstClockTime)message.getArgInt64(0));
-    ///> And start playing..
-    gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
-    gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
 }
 void GstVideoSyncPlayer::playMessage(const osc::Message &message ){
@@ -457,11 +455,14 @@ void GstVideoSyncPlayer::playMessage(const osc::Message &message ){
 
     ///> Set the base time of the slave network clock.
     setClientBaseTime(message.getArgInt64(0));
+    console() << " current time: " << gst_clock_get_time(m_gstClock) << std::endl;
+    console() << " set basetime: " << message.getArgInt64(0) << std::endl;
+    GstPlayer::play();
+    console() << " get basetime: " << gst_element_get_base_time(m_gstPipeline) << std::endl;
 
-    ///> And start playing..
-    gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
-    gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-
+    ///> and go..
+    //gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
+    //gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
     // TODO do a seek here if position is to far away
 
 }
@@ -488,21 +489,18 @@ void GstVideoSyncPlayer::loopMessage(const osc::Message &message ){
 
     console() << "GstVideoSyncPlayer: CLIENT ---> LOOP " << std::endl;
 
-    ///> Get ready to start over..
-    gst_element_set_state(m_gstPipeline, GST_STATE_NULL);
-    gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-
-    ///> Set the slave clock and base_time.
+    ///> Set the slave base time.
+    GstPlayer::stop();
     setClientBaseTime(message.getArgInt64(0));
-
-    ///> and go..
-    gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
-    gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+    seekToTime(0);
+    GstPlayer::play();
 
 }
 void GstVideoSyncPlayer::eosMessage(const osc::Message &message ){
     console() << "GstVideoSyncPlayer CLIENT ---> EOS " << std::endl;
 
+    ///> master stream has ended and there is no loop or source change in the near future
+    stop();
 }
 //void GstVideoSyncPlayer::initMessage(const osc::Message &message ){
 //    console() << "GstVideoSyncPlayer CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
