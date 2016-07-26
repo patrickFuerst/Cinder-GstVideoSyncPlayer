@@ -52,9 +52,9 @@ void SimpleSyncedPlayer::setup(){
     ///> The IP should be the same in both cases and it refers to the IP the master is running.
 
     player.initAsMaster("192.168.69.188", MASTER_CLOCK_SYNC_PORT, MASTER_OSC_RCV_PORT,SLAVE_OSC_RCV_PORT);
-   // player.initAsSlave("192.168.69.188", MASTER_CLOCK_SYNC_PORT, MASTER_OSC_RCV_PORT, SLAVE_OSC_RCV_PORT);
+    player.initAsSlave("192.168.69.171", MASTER_CLOCK_SYNC_PORT, MASTER_OSC_RCV_PORT, SLAVE_OSC_RCV_PORT);
     player.load(videoPath.string());
-    player.loop(true);
+    player.setLoop(true);
     player.play();
 }
 

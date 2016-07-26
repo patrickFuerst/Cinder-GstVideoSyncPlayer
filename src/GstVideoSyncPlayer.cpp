@@ -14,10 +14,10 @@ GstVideoSyncPlayer::GstVideoSyncPlayer()
     , m_clockPort(1234)
     , m_masterRcvPort(m_clockPort+1)
     , m_slaveRcvPort(m_clockPort+2)
-    , m_loop(false)
+    //, m_loop(false)
     , m_initialized(false)
-    , m_movieEnded(false)
-    , m_paused(true)
+    //, m_movieEnded(false)
+    //, m_paused(true)
     , mUniqueClientId(0)
 {
     GstPlayer::initialize();
@@ -66,18 +66,18 @@ GstVideoSyncPlayer::~GstVideoSyncPlayer()
 
 void GstVideoSyncPlayer::movieEnded()
 {
-    if( !m_movieEnded ){
-        console() << "GstVideoSyncPlayer: Movie ended.. " << std::endl;
-        m_movieEnded = true;
-        m_paused = true;
-        sendToClients( getEosMsg() );
-    }
+//    if( !m_movieEnded ){
+//        console() << "GstVideoSyncPlayer: Movie ended.. " << std::endl;
+//        m_movieEnded = true;
+//        m_paused = true;
+//        sendToClients( getEosMsg() );
+//    }
 }
 
-void GstVideoSyncPlayer::loop( bool _loop )
-{
-    m_loop = _loop;
-}
+//void GstVideoSyncPlayer::loop( bool _loop )
+//{
+//    m_loop = _loop;
+//}
 
 void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const uint16_t _clockPort,  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort)
 {
@@ -106,7 +106,7 @@ void GstVideoSyncPlayer::initAsMaster( const std::string _clockIp, const uint16_
     m_oscReceiver->bind();
     m_oscReceiver->listen();
 
-    getEndedSignal().connect( std::bind( &GstVideoSyncPlayer::movieEnded , this ));
+    //getEndedSignal().connect( std::bind( &GstVideoSyncPlayer::movieEnded , this ));
 
     m_initialized = true;
 }
@@ -173,25 +173,17 @@ void GstVideoSyncPlayer::load( const std::string& path )
     ///> Now that we have loaded we can grab the pipeline..
     m_gstPipeline = GstPlayer::getPipeline();
 
-    ///> Since we will provide a network clock for the synchronization
-    ///> we disable here the internal handling of the base time.
-    gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
 
     if( m_isMaster ){
-        ///> Remove any previously used clock.
-        if(m_gstClock) g_object_unref((GObject*) m_gstClock);
-        m_gstClock = NULL;
 
-        ///> Grab the pipeline clock.
-        m_gstClock = gst_pipeline_get_clock(GST_PIPELINE(m_gstPipeline));
-    
-        ///> Set this clock as the master network provider clock.
-        ///> The slaves are going to poll this clock through the network
-        ///> and adjust their times based on this clock and their local observations.
-        gst_net_time_provider_new(m_gstClock, m_clockIp.c_str(), m_clockPort);
     }
 
     if( !m_isMaster ){
+
+        ///> Since we will provide a network clock for the synchronization
+        ///> we disable here the internal handling of the base time.
+        gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
+
         osc::Message m;
          m.setAddress("/client-loaded");
          m.append(mUniqueClientId);
@@ -204,55 +196,57 @@ void GstVideoSyncPlayer::load( const std::string& path )
 
 void GstVideoSyncPlayer::update()
 {
-    if( m_isMaster && m_loop && m_movieEnded ){
-        
-
-        ///> Get ready to start over..
-        gst_element_set_state(m_gstPipeline, GST_STATE_READY);
-        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-
-        ///> Set the master clock i.e This the clock that the slaves will poll 
-        ///> in order to keep in-sync.
-        setMasterClock();
-
-        ///> ..and start playing the master..
-        gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
-        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-
-        ///> Let the slaves know that they should start over..
-        sendToClients( getLoopMsg() );
-
-        m_movieEnded = false;
-        m_paused = false;
-    }
+//    if( m_isMaster && m_loop && m_movieEnded ){
+//
+//
+//        ///> Get ready to start over..
+//        gst_element_set_state(m_gstPipeline, GST_STATE_READY);
+//        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+//
+//        ///> Set the master clock i.e This the clock that the slaves will poll
+//        ///> in order to keep in-sync.
+//        setMasterClock();
+//
+//        ///> ..and start playing the master..
+//        gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
+//        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+//
+//        ///> Let the slaves know that they should start over..
+//        sendToClients( getLoopMsg() );
+//
+//        m_movieEnded = false;
+//        m_paused = false;
+//    }
 
 }
 
 void GstVideoSyncPlayer::play()
 {
-    if( !m_isMaster || !m_paused ) return;
+    if( !m_isMaster /*|| !m_paused*/ ) return;
 
-    setMasterClock();
+   // setMasterClock();
 
-    if( m_movieEnded ){
-        ///> Get ready to start over..
-        gst_element_set_state(m_gstPipeline, GST_STATE_READY);
-        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+//    if( m_movieEnded ){
+//        ///> Get ready to start over..
+//        gst_element_set_state(m_gstPipeline, GST_STATE_READY);
+//        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+//
+//        ///> ..and start playing the master..
+//        gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
+//        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+//        sendToClients( getLoopMsg() );
+//    }
+//    else{
+//        gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
+//        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+//
+//        sendToClients( getPlayMsg() );
+//    }
 
-        ///> ..and start playing the master..
-        gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
-        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-        sendToClients( getLoopMsg() );
-    }
-    else{
-        gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
-        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-
-        sendToClients( getPlayMsg() );
-    }
-
-    m_movieEnded = false;
-    m_paused = false;
+    GstPlayer::play();
+    ///> Grab the base time..
+    mGstBaseTime = gst_element_get_base_time(m_gstPipeline);
+    sendToClients( getPlayMsg() );
 
 }
 
@@ -303,6 +297,18 @@ void GstVideoSyncPlayer::setMasterClock()
 {
     if( !m_isMaster ) return;
 
+    ///> Remove any previously used clock.
+    if(m_gstClock) g_object_unref((GObject*) m_gstClock);
+    m_gstClock = NULL;
+
+    ///> Grab the pipeline clock.
+    m_gstClock = gst_pipeline_get_clock(GST_PIPELINE(m_gstPipeline));
+
+    ///> Set this clock as the master network provider clock.
+    ///> The slaves are going to poll this clock through the network
+    ///> and adjust their times based on this clock and their local observations.
+    gst_net_time_provider_new(m_gstClock, m_clockIp.c_str(), m_clockPort);
+
 
     ///> Be explicit on which clock we are going to use.
     gst_pipeline_use_clock(GST_PIPELINE(m_gstPipeline), m_gstClock);
@@ -310,11 +316,11 @@ void GstVideoSyncPlayer::setMasterClock()
 
 
     ///> Grab the base time..
-    mGstBaseTime = gst_clock_get_time(m_gstClock);
+    //mGstBaseTime = gst_clock_get_time(m_gstClock);
 
     ///> and explicitely set it for this pipeline after disabling the internal handling of time.
-    gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
-    gst_element_set_base_time(m_gstPipeline, mGstBaseTime);
+    //gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
+    //gst_element_set_base_time(m_gstPipeline, mGstBaseTime);
 }
 
 void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
@@ -334,7 +340,7 @@ void GstVideoSyncPlayer::setClientClock( GstClockTime _baseTime )
 
     ///> Disable internal handling of time and set the base time.
     gst_element_set_start_time(m_gstPipeline, GST_CLOCK_TIME_NONE);
-    gst_element_set_base_time(m_gstPipeline,  mGstBaseTime);
+    gst_element_set_base_time(m_gstPipeline,  _baseTime);
 
 }
 
@@ -398,27 +404,15 @@ void GstVideoSyncPlayer::pause()
 {
     if( !m_isMaster ) return;
 
-    if( !m_paused ){
-        if( !isLoaded() ){
-            console() << " Cannot pause non loaded video ! " <<std::endl;
-            return;
-        }
-
-        gst_element_set_state(m_gstPipeline, GST_STATE_PAUSED);
-        gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-        
+        stop();
         gst_element_query_position(GST_ELEMENT(m_gstPipeline),GST_FORMAT_TIME,&m_pos);
-
         GstSeekFlags _flags = (GstSeekFlags) (GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE);
         
         if (!gst_element_seek_simple (m_gstPipeline, GST_FORMAT_TIME, _flags, m_pos)) {
                 console() << "Pausing seek failed" << std::endl;
         }
 
-        m_paused = true;
-        
         sendToClients( getPauseMsg() );
-    }
 }
 
 const osc::Message GstVideoSyncPlayer::getPauseMsg() const
@@ -472,7 +466,7 @@ void GstVideoSyncPlayer::clientLoadedMessage(const osc::Message &message ){
 
 
     ///> If the master is paused when the client connects pause the client also.
-    if( m_paused ){
+    if( GstPlayer::isPaused() ){
         sendToClient(getPauseMsg(), message.getSenderIpAddress() );
         return;
     }
@@ -509,8 +503,6 @@ void GstVideoSyncPlayer::initTimeMessage(const osc::Message &message ){
     gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
     gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-    m_paused = false;
-    m_movieEnded = false;
 }
 void GstVideoSyncPlayer::playMessage(const osc::Message &message ){
     console() << "GstVideoSyncPlayer: CLIENT ---> PLAY " << std::endl;
@@ -522,17 +514,16 @@ void GstVideoSyncPlayer::playMessage(const osc::Message &message ){
     gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
     gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-    m_paused = false;
-    m_movieEnded =false;
+    // TODO do a seek here if position is to far away
 
 }
 void GstVideoSyncPlayer::pauseMessage(const osc::Message &message ){
     m_pos = message.getArgInt64(0);
     console() << "GstVideoSyncPlayer: CLIENT ---> PAUSE " << std::endl;
 
-    gst_element_set_state(m_gstPipeline, GST_STATE_PAUSED);
-    gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-
+    //gst_element_set_state(m_gstPipeline, GST_STATE_PAUSED);
+   // gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+    stop();
     ///> This needs more thinking but for now it gives acceptable results.
     ///> When we pause, we seek to the position of the master when paused was called.
     ///> If we dont do this there is a delay before the pipeline starts again i.e when hitting play() again after pause()..
@@ -544,7 +535,7 @@ void GstVideoSyncPlayer::pauseMessage(const osc::Message &message ){
         console () << "Pausing seek failed" << std::endl;
     }
 
-    m_paused = true;
+   // m_paused = true;
 
 
 }
@@ -563,14 +554,14 @@ void GstVideoSyncPlayer::loopMessage(const osc::Message &message ){
     gst_element_set_state(m_gstPipeline, GST_STATE_PLAYING);
     gst_element_get_state(m_gstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-    m_movieEnded = false;
-    m_paused = false;
+   // m_movieEnded = false;
+   // m_paused = false;
     
 }
 void GstVideoSyncPlayer::eosMessage(const osc::Message &message ){
     console() << "GstVideoSyncPlayer CLIENT ---> EOS " << std::endl;
-    m_movieEnded = true;
-    m_paused = true;
+   // m_movieEnded = true;
+   // m_paused = true;
 }
 //void GstVideoSyncPlayer::initMessage(const osc::Message &message ){
 //    console() << "GstVideoSyncPlayer CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
@@ -580,16 +571,6 @@ void GstVideoSyncPlayer::eosMessage(const osc::Message &message ){
 ci::gl::Texture2dRef GstVideoSyncPlayer::getTexture()
 {
     return GstPlayer::getVideoTexture();
-}
-
-bool GstVideoSyncPlayer::isPaused()
-{
-    return m_paused;
-}
-
-bool GstVideoSyncPlayer::isMovieEnded()
-{
-    return m_movieEnded;
 }
 
 bool GstVideoSyncPlayer::isMaster()

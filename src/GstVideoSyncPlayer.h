@@ -31,8 +31,6 @@ class GstVideoSyncPlayer : public GstPlayer{
         void                            loop( bool _loop );
         void                            pause();
         gl::Texture2dRef                getTexture();
-        bool                            isPaused();
-        bool                            isMovieEnded();
         bool                            isMaster();
         //void                          exit(ofEventArgs & args);
         //void                          setPixelFormat( const ofPixelFormat & _pixelFormat );
@@ -89,9 +87,9 @@ class GstVideoSyncPlayer : public GstPlayer{
         uint16_t                        m_masterRcvPort;    ///> osc communication.
         uint16_t                        m_slaveRcvPort;     ///> osc communication.
         int32_t                         mUniqueClientId;    ///> osc communication.
-        bool                            m_loop;             ///> Should we loop?
-        bool                            m_movieEnded;       ///> Has the video ended??
+        //bool                            m_loop;             ///> Should we loop?
+        //bool                            m_movieEnded;       ///> Has the video ended??
         gint64                          m_pos;              ///> Position of the player.
-        bool                            m_paused;           ///> Is the player paused ??
+        //bool                            m_paused;           ///> Is the player paused ??
         signals::Connection             mMovieEndedConnection;
 };
