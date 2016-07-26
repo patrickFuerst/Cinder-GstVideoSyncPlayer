@@ -25,10 +25,9 @@ class GstVideoSyncPlayer : public GstPlayer{
         void                            loadAsync( const fs::path& path );
         void                            load( const std::string& path );
         void                            play();
-        void                            update();
         void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
         void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
-        void                            loop( bool _loop );
+        //void                            loop( bool _loop );
         void                            pause();
         gl::Texture2dRef                getTexture();
         bool                            isMaster();
@@ -65,6 +64,8 @@ class GstVideoSyncPlayer : public GstPlayer{
         void                            clientLoadedMessage(const osc::Message &message );
         void                            clientExitedMessage(const osc::Message &message );
 
+        void                            resetBaseTime();
+
         //------------------ SLAVE -----------------------
 
         void                            setClientClock( GstClockTime _baseTime );
@@ -87,9 +88,6 @@ class GstVideoSyncPlayer : public GstPlayer{
         uint16_t                        m_masterRcvPort;    ///> osc communication.
         uint16_t                        m_slaveRcvPort;     ///> osc communication.
         int32_t                         mUniqueClientId;    ///> osc communication.
-        //bool                            m_loop;             ///> Should we loop?
-        //bool                            m_movieEnded;       ///> Has the video ended??
         gint64                          m_pos;              ///> Position of the player.
-        //bool                            m_paused;           ///> Is the player paused ??
         signals::Connection             mMovieEndedConnection;
 };
