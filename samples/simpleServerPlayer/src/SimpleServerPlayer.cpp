@@ -51,7 +51,7 @@ void SimpleServerPlayer::setup(){
     ///> Call the appropriate init function depending on if you are on a master or a slave.
     ///> The IP should be the same in both cases and it refers to the IP the master is running.
     player.init("192.168.69.172", SERVER_CLOCK_SYNC_PORT, SERVER_OSC_RCV_PORT,CLIENT_OSC_RCV_PORT);
-    player.load(videoPath.string());
+    player.load(videoPath);
     player.setLoop(true);
     player.play();
 }

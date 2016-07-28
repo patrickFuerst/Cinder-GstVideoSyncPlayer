@@ -113,9 +113,9 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
 //
 //}
 
-void GstVideoClient::load( const std::string& path )
+void GstVideoClient::load( const fs::path& path )
 {
-    GstPlayer::load(path);
+    GstPlayer::load(path.string());
 
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();

@@ -19,10 +19,10 @@ class GstVideoClient : public GstPlayer{
 
         void                            init( const std::string _clockIp, const uint16_t _clockPort,
 											  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort );
-        void                            loadAsync( const fs::path& path );
-        void                            load( const std::string& path );
-        void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
-        void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
+        //void                            loadAsync( const fs::path& path );
+        void                            load( const fs::path& path );
+        //void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
+        //void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
         gl::Texture2dRef                getTexture();
         //void                          exit(ofEventArgs & args);
         //void                          setPixelFormat( const ofPixelFormat & _pixelFormat );
