@@ -1,0 +1,62 @@
+#pragma once
+
+#include "cinder/gl/gl.h"
+#include "cinder/linux/GstPlayer.h"
+#include <gst/net/gstnet.h>
+#include "Osc.h"
+
+using namespace ci;
+using namespace ci::app;
+using namespace gst::video;
+using namespace std;
+
+class GstVideoClient : public GstPlayer{
+
+    public:
+
+        GstVideoClient();
+        ~GstVideoClient();
+
+        void                            init( const std::string _clockIp, const uint16_t _clockPort,
+											  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort );
+        void                            loadAsync( const fs::path& path );
+        void                            load( const std::string& path );
+        void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
+        void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
+        gl::Texture2dRef                getTexture();
+        //void                          exit(ofEventArgs & args);
+        //void                          setPixelFormat( const ofPixelFormat & _pixelFormat );
+    protected:
+
+        shared_ptr<osc::SenderTcp>      mOscSender;        ///> osc sender for slave.
+        shared_ptr<osc::ReceiverTcp>    mOscReceiver;      ///> osc receiver.
+
+        bool                            mInitialized;      ///> If the player initialized properly ??
+    private:
+	
+		void                            socketError( const asio::error_code &error, uint64_t identifier,
+													 const osc::ReceiverTcp::protocol::endpoint &endpoint );
+
+        void                            setClock( GstClockTime _baseTime );
+        void                            setBaseTime( GstClockTime _baseTime );
+        void                            playMessage(const osc::Message &message );
+        void                            pauseMessage(const osc::Message &message );
+        void                            loopMessage(const osc::Message &message );
+        void                            eosMessage(const osc::Message &message );
+        void                            initTimeMessage(const osc::Message &message );
+
+        void                            movieEnded();
+
+    private:
+
+        GstClock*                       mGstClock;         ///> The network clock.
+        GstElement*                     mGstPipeline;      ///> The running pipeline.
+        GstClockTime                    mGstBaseTime;     ///> The base time.
+        std::string                     mClockIp;          ///> The IP of the server.
+        uint16_t                        mClockPort;        ///> The port that should be used for the synchronization.
+        uint16_t                        mServerRcvPort;    ///> osc communication.
+        uint16_t                        mClientRcvPort;     ///> osc communication.
+        int32_t                         mUniqueClientId;    ///> osc communication.
+        gint64                          mPos;              ///> Position of the player.
+        signals::Connection             mMovieEndedConnection;
+};
