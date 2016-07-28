@@ -10,8 +10,9 @@ using namespace ci::app;
 using namespace gst::video;
 using namespace std;
 
-typedef std::map<std::string, osc::SenderTcp> Clients;
+typedef std::map<uint64_t, osc::SenderTcp> Clients;
 typedef Clients::iterator clientsIter;
+typedef std::map<std::string, clientsIter > ClientsAdressCache;
 
 class GstVideoServer : public GstPlayer{
 
@@ -35,13 +36,14 @@ class GstVideoServer : public GstPlayer{
     protected:
 
         Clients                         mConnectedClients; ///> Our connected clients.
-        shared_ptr<osc::ReceiverTcp>    mOscReceiver;      ///> osc receiver.
+		ClientsAdressCache    			mConnectedAdressedClients;
+		shared_ptr<osc::ReceiverTcp>    mOscReceiver;      ///> osc receiver.
 
         bool                            mInitialized;      ///> If the player initialized properly ??
     private:
 
         //------------------ ERROR Handling ---------------
-        void                            socketError( const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint );
+        void                            socketError( const asio::error_code &error, uint64_t identifier );
 
         //------------------ MASTER -----------------------
         void                            clientAccepted( osc::TcpSocketRef socket, uint64_t identifier   );

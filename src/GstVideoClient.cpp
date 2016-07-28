@@ -79,8 +79,7 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
     mOscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(mClientRcvPort));
 
     mOscReceiver->setSocketTransportErrorFn(
-			std::bind( &GstVideoClient::socketErrorReceiver, this, std::placeholders::_1, std::placeholders::_2,
-					   std::placeholders::_3 ) );
+			std::bind( &GstVideoClient::socketErrorReceiver, this, std::placeholders::_1, std::placeholders::_2 ) );
     mOscReceiver->setListener("/play" , std::bind(&GstVideoClient::playMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/pause" , std::bind(&GstVideoClient::pauseMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/loop" , std::bind(&GstVideoClient::loopMessage , this, std::placeholders::_1 ));
@@ -129,12 +128,9 @@ void GstVideoClient::load( const fs::path& path )
 	 }
 }
 
-void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_t identifier,
-								  const osc::ReceiverTcp::protocol::endpoint &endpoint )
+void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_t identifier )
 {
-    auto address = endpoint.address().to_string();
-    console() << "Receiver Socket Error for ip address " << address <<". Error:  " << error.message() << std::endl;
-
+    console() << "Receiver Socket Error for ip address. Error:  " << error.message() << std::endl;
     //close recv and sender
     // TODO add solution for reconnecting
     mOscReceiver->close();

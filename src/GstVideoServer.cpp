@@ -74,7 +74,7 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
     mClientRcvPort = _oscSlaveRcvPort;
 	
     mOscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(mServerRcvPort));
-    mOscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoServer::socketError, this, std::placeholders::_1,std::placeholders::_2, std::placeholders::_3) );
+    mOscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoServer::socketError, this, std::placeholders::_1,std::placeholders::_2 ) );
     mOscReceiver->setOnAcceptFn( std::bind(&GstVideoServer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
     mOscReceiver->setListener("/client-loaded" , std::bind(&GstVideoServer::clientLoadedMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/client-exited" , std::bind(&GstVideoServer::clientExitedMessage , this, std::placeholders::_1 ));
@@ -129,18 +129,20 @@ void GstVideoServer::play()
 
 }
 
-void GstVideoServer::socketError(  const asio::error_code &error, uint64_t identifier, const osc::ReceiverTcp::protocol::endpoint &endpoint )
+void GstVideoServer::socketError(  const asio::error_code &error, uint64_t identifier )
 {
-    auto address = endpoint.address().to_string();
-    auto clientEntry = mConnectedClients.find( address );
+    auto clientEntry = mConnectedClients.find( identifier );
     if(clientEntry != mConnectedClients.end() ){
         auto& client = clientEntry->second;
+		auto address = client.getRemoteEndpoint().address().to_string();
         console() << "Socket Error for Client with ip address " << address <<". Error:  " << error.message() << std::endl;
+		client.shutdown();
         client.close();
+		mConnectedAdressedClients.erase(address);
         mConnectedClients.erase(clientEntry);
         mOscReceiver->closeConnection(identifier);
     }else{
-        console() << "Couldn't find client for id: " << address << " and errror: " << error.message() << std::endl;
+        console() << "Couldn't find client for id: " << identifier << " and errror: " << error.message() << std::endl;
     }
 
 }
@@ -150,10 +152,12 @@ void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifi
     std::string addressString = socket->remote_endpoint().address().to_string();
     console() << "New Client with ip address " << addressString <<" on port " << socket->local_endpoint().port() << std::endl;
 	
-	auto element = mConnectedClients.emplace( std::piecewise_construct, std::forward_as_tuple(addressString) , std::forward_as_tuple(TCP_SENDER_PORT, addressString , mClientRcvPort)  );
+	auto element = mConnectedClients.emplace( std::piecewise_construct, std::forward_as_tuple(identifier) , std::forward_as_tuple(TCP_SENDER_PORT, addressString , mClientRcvPort)  );
 	//auto element = mConnectedClients.emplace( std::piecewise_construct, std::forward_as_tuple(addressString) , std::forward_as_tuple( socket )  );
     if( element.second ){
 
+		mConnectedAdressedClients.emplace(addressString, element.first  );
+		
 		element.first->second.setOnConnectFn(
 				[this]( osc::TcpSocketRef socketRef){
 					console() << "Connected to new Client." << std::endl;
@@ -241,9 +245,9 @@ void GstVideoServer::sendToClient( const osc::Message &m, const asio::ip::addres
 
 void GstVideoServer::sendToClient( const osc::Message &m, const std::string &address )
 {
-    const auto& clientKey = mConnectedClients.find(address);
-    if(clientKey != mConnectedClients.end() ){
-        auto& client = clientKey->second;
+    const auto& clientKey = mConnectedAdressedClients.find(address);
+    if(clientKey != mConnectedAdressedClients.end() ){
+        auto& client = clientKey->second->second;
         console() << "Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() << std::endl;
         client.send(m);
     } else{

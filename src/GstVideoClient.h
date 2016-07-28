@@ -33,8 +33,7 @@ class GstVideoClient : public GstPlayer{
         bool                            mInitialized;      ///> If the player initialized properly ??
     private:
 	
-		void                            socketErrorReceiver( const asio::error_code &error, uint64_t identifier,
-													 const osc::ReceiverTcp::protocol::endpoint &endpoint );
+		void                            socketErrorReceiver( const asio::error_code &error, uint64_t identifier );
 		void 							socketErrorSender(const asio::error_code & error, const std::string & oscAddress );
 		void                            initClock( GstClockTime _baseTime );
 		void                            setClock();
