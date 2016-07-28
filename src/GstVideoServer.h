@@ -35,7 +35,6 @@ class GstVideoServer : public GstPlayer{
     protected:
 
         Clients                         mConnectedClients; ///> Our connected clients.
-        shared_ptr<osc::SenderTcp>      mOscSender;        ///> osc sender for slave.
         shared_ptr<osc::ReceiverTcp>    mOscReceiver;      ///> osc receiver.
 
         bool                            mInitialized;      ///> If the player initialized properly ??

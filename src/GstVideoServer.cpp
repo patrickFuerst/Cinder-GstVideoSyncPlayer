@@ -29,9 +29,6 @@ GstVideoServer::~GstVideoServer()
     if(mOscReceiver)
         mOscReceiver->close();
 
-    if(mOscSender)
-        mOscSender->close();
-
     for(auto it = mConnectedClients.begin(); it != mConnectedClients.end(); it++){
         it->second.close();
     }
@@ -75,11 +72,7 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
     mClockPort = _clockPort;
 	mServerRcvPort = _oscMasterRcvPort;
     mClientRcvPort = _oscSlaveRcvPort;
-
-   // mOscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp( TCP_SENDER_PORT,mClockIp, m_rcvPort ));
-   // mOscSender->bind();
-   // mOscSender->connect();
-
+	
     mOscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(mServerRcvPort));
     mOscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoServer::socketError, this, std::placeholders::_1,std::placeholders::_2, std::placeholders::_3) );
     mOscReceiver->setOnAcceptFn( std::bind(&GstVideoServer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
