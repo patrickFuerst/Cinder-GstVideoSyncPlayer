@@ -20,7 +20,6 @@ class GstVideoClient : public GstPlayer{
         void                            init( const std::string _clockIp, const uint16_t _clockPort,
 											  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort );
         //void                            loadAsync( const fs::path& path );
-        void                            load( const fs::path& path );
         //void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
         //void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
         gl::Texture2dRef                getTexture();
@@ -37,15 +36,21 @@ class GstVideoClient : public GstPlayer{
 		void                            socketErrorReceiver( const asio::error_code &error, uint64_t identifier,
 													 const osc::ReceiverTcp::protocol::endpoint &endpoint );
 		void 							socketErrorSender(const asio::error_code & error, const std::string & oscAddress );
-        void                            setClock( GstClockTime _baseTime );
+		void                            initClock( GstClockTime _baseTime );
+		void                            setClock();
         void                            setBaseTime( GstClockTime _baseTime );
-        void                            playMessage(const osc::Message &message );
+        
+		
+		void                            playMessage(const osc::Message &message );
         void                            pauseMessage(const osc::Message &message );
         void                            loopMessage(const osc::Message &message );
         void                            eosMessage(const osc::Message &message );
-        void                            initTimeMessage(const osc::Message &message );
-
-        void                            movieEnded();
+		void                            initTimeMessage(const osc::Message &message );
+		void                            loadFileMessage(const osc::Message &message );
+	
+		void                            load( const fs::path& path );
+		
+		void                            movieEnded();
 
     private:
 

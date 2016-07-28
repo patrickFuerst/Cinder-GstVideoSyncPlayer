@@ -85,7 +85,8 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
     mOscReceiver->setListener("/pause" , std::bind(&GstVideoClient::pauseMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/loop" , std::bind(&GstVideoClient::loopMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/eos" , std::bind(&GstVideoClient::eosMessage , this, std::placeholders::_1 ));
-    mOscReceiver->setListener("/init-time" , std::bind(&GstVideoClient::initTimeMessage , this, std::placeholders::_1 ));
+	mOscReceiver->setListener("/init-time" , std::bind(&GstVideoClient::initTimeMessage , this, std::placeholders::_1 ));
+	mOscReceiver->setListener("/load-file" , std::bind(&GstVideoClient::loadFileMessage , this, std::placeholders::_1 ));
 
     mOscReceiver->bind();
     mOscReceiver->listen();
@@ -152,7 +153,7 @@ void GstVideoClient::socketErrorSender( const asio::error_code &error, const std
 	mOscReceiver->close();
 	mOscSender->close();
 }
-void GstVideoClient::setClock( GstClockTime _baseTime )
+void GstVideoClient::initClock( GstClockTime _baseTime )
 {
     ///> Remove any previously used clock.
     if(mGstClock) g_object_unref((GObject*) mGstClock);
@@ -160,15 +161,18 @@ void GstVideoClient::setClock( GstClockTime _baseTime )
 
     ///> Create the slave network clock with an initial time.
     mGstClock = gst_net_client_clock_new(NULL, mClockIp.c_str(), mClockPort, _baseTime);
-
-    ///> Be explicit.
-    gst_pipeline_use_clock(GST_PIPELINE(mGstPipeline), mGstClock);
-    gst_pipeline_set_clock(GST_PIPELINE(mGstPipeline), mGstClock);
-
-    ///> Disable internal handling of time and set the base time.
-    gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
-    gst_element_set_base_time(mGstPipeline,  _baseTime);
-
+	
+}
+void GstVideoClient::setClock()
+{
+	///> Be explicit.
+	gst_pipeline_use_clock(GST_PIPELINE(mGstPipeline), mGstClock);
+	gst_pipeline_set_clock(GST_PIPELINE(mGstPipeline), mGstClock);
+	
+	///> Disable internal handling of time and set the base time.
+	gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
+	gst_element_set_base_time(mGstPipeline,  mGstBaseTime);
+	
 }
 
 void GstVideoClient::setBaseTime( GstClockTime _baseTime )
@@ -199,14 +203,30 @@ void GstVideoClient::setBaseTime( GstClockTime _baseTime )
 
 void GstVideoClient::initTimeMessage(const osc::Message &message ){
     console() <<"GstVideoClient:  CLIENT RECEIVED MASTER INIT TIME! " <<std::endl;
-    mPos = message.getArgInt64(1);
 
     ///> Initial base time for the clients.
     ///> Set the slave network clock that is going to poll the master.
-	setClock(( GstClockTime ) message.getArgInt64( 0 ));
-	setBaseTime(( GstClockTime ) message.getArgInt64( 0 ));
+	initClock(( GstClockTime ) message.getArgInt64( 0 ));
 
 }
+
+void GstVideoClient::loadFileMessage(const osc::Message &message ){
+	console() << "GstVideoClient: CLIENT ---> LOAD FILE: " << message.getArgString(0) << std::endl;
+	
+	auto fileName = message.getArgString(0);
+	
+	fs::path filePath = getAssetPath( fileName );
+	
+	if( ! filePath.empty() ) {
+		load( filePath );
+		///> whenever we load a new file, a new pipeline is created and we need
+		///> to set the network clock again
+		setClock();
+	}else{
+		console() << "Couldn't find file: " << fileName << std::endl;
+	}
+}
+
 void GstVideoClient::playMessage(const osc::Message &message ){
     console() << "GstVideoClient: CLIENT ---> PLAY " << std::endl;
 

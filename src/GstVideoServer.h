@@ -11,7 +11,7 @@ using namespace gst::video;
 using namespace std;
 
 typedef std::map<std::string, osc::SenderTcp> Clients;
-typedef Clients::iterator clients_iter;
+typedef Clients::iterator clientsIter;
 
 class GstVideoServer : public GstPlayer{
 
@@ -21,11 +21,11 @@ class GstVideoServer : public GstPlayer{
         ~GstVideoServer();
 
         void                            init( const std::string _clockIp, const uint16_t _clockPort, const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort);
-        void                            loadAsync( const fs::path& path );
+        //void                            loadAsync( const fs::path& path );
         void                            load( const fs::path& path );
         void                            play();
-        void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
-        void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
+        //void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
+        //void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
         //void                            loop( bool _loop );
         void                            pause();
         gl::Texture2dRef                getTexture();
