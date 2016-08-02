@@ -1,6 +1,7 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
+#include "cinder/Log.h"
 #include "GstVideoClient.h"
 
 #define SERVER_CLOCK_SYNC_PORT 12366 // The port that will be used from GStreamer for master-slave clock synchronization.
@@ -28,13 +29,21 @@ void prepareSettings( SimpleClientPlayer::Settings* settings )
 }
 
 void SimpleClientPlayer::setup(){
-
-
+	
+	std::string serverIpAddress;
+	const auto& args = App::get()->getCommandLineArgs();
+	if(args.size() > 1 ){
+		serverIpAddress = args[1];
+	} else{
+		CI_LOG_E("Pass Server IP address as argument.");
+		exit(-1);
+	}
+	
     fs::path videoPath = getAssetPath("bbb.mp4");
 
     ///> Call the appropriate init function depending on if you are on a master or a slave.
     ///> The IP should be the same in both cases and it refers to the IP the master is running.
-    player.init("192.168.69.172", SERVER_CLOCK_SYNC_PORT, SERVER_OSC_RCV_PORT,CLIENT_OSC_RCV_PORT);
+    player.init(serverIpAddress, SERVER_CLOCK_SYNC_PORT, SERVER_OSC_RCV_PORT,CLIENT_OSC_RCV_PORT);
 
 }
 
