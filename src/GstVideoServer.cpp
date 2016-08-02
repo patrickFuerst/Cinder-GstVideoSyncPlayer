@@ -32,6 +32,10 @@ GstVideoServer::~GstVideoServer()
     for(auto it = mConnectedClients.begin(); it != mConnectedClients.end(); it++){
         it->second.close();
     }
+	
+	if(mGstClock)
+		g_object_unref( GST_OBJECT(mGstClock) );
+	mGstClock = nullptr;
 }
 
 //void GstVideoServer::exit(ofEventArgs & args)
