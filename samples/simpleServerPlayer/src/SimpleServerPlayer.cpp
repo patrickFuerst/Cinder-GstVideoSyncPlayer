@@ -1,6 +1,7 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
+#include "cinder/Log.h"
 #include "GstVideoServer.h"
 
 #define SERVER_CLOCK_SYNC_PORT 12366 // The port that will be used from GStreamer for master-slave clock synchronization.
@@ -14,11 +15,11 @@ using namespace ci::app;
 class SimpleServerPlayer : public App {
 public:
 
-
-    void keyDown( KeyEvent event ) override;
-    void setup() override;
-    void update() override;
-    void draw() override;
+	
+	void keyDown( KeyEvent event ) override;
+	void setup() override;
+	void update() override;
+	void draw() override;
 
 private:
     GstVideoServer player;
@@ -26,10 +27,8 @@ private:
 
 void prepareSettings( SimpleServerPlayer::Settings* settings )
 {
-    settings->setMultiTouchEnabled( false );
+	
 }
-
-
 
 void SimpleServerPlayer::keyDown( KeyEvent event )
 {
@@ -44,15 +43,25 @@ void SimpleServerPlayer::keyDown( KeyEvent event )
 }
 
 void SimpleServerPlayer::setup(){
-
-
+	
+	std::string localIpAddress;
+	const auto& args = App::get()->getCommandLineArgs();
+	if(args.size() > 1 ){
+		localIpAddress = args[1];
+	} else{
+		CI_LOG_E("Pass local IP address as argument.");
+		exit(-1);
+	}
+	
     fs::path videoPath = getAssetPath("bbb.mp4");
 
-    ///> Call the appropriate init function depending on if you are on a master or a slave.
+	
+	///> Call the appropriate init function depending on if you are on a master or a slave.
     ///> The IP should be the same in both cases and it refers to the IP the master is running.
-    player.init("192.168.69.172", SERVER_CLOCK_SYNC_PORT, SERVER_OSC_RCV_PORT,CLIENT_OSC_RCV_PORT);
+    player.init(localIpAddress, SERVER_CLOCK_SYNC_PORT, SERVER_OSC_RCV_PORT,CLIENT_OSC_RCV_PORT);
     player.load(videoPath);
     player.setLoop(true);
+	player.setVolume(0.0);
     player.play();
 }
 
