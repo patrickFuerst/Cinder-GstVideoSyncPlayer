@@ -25,7 +25,11 @@ private:
 
 void prepareSettings( SimpleClientPlayer::Settings* settings )
 {
-    settings->setMultiTouchEnabled( false );
+//	settings->setFullScreen(true);
+	settings->setWindowSize( 1920 , 1080);
+//	auto format = settings->getDefaultWindowFormat();
+//	format.fullScreen(true);
+//	settings->prepareWindow(format);
 }
 
 void SimpleClientPlayer::setup(){
@@ -55,7 +59,7 @@ void SimpleClientPlayer::draw()
 {
     gl::clear();
 
-    gl::draw( player.getTexture() );
+    gl::draw( player.getTexture(), getWindowBounds() );
 
 }
 

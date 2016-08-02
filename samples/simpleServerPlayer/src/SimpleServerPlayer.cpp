@@ -27,7 +27,11 @@ private:
 
 void prepareSettings( SimpleServerPlayer::Settings* settings )
 {
-	
+//	settings->setFullScreen(true);
+	settings->setWindowSize( 1920 , 1080);
+//	auto format = settings->getDefaultWindowFormat();
+//	format.fullScreen(true);
+//	settings->prepareWindow(format);
 }
 
 void SimpleServerPlayer::keyDown( KeyEvent event )
@@ -72,8 +76,8 @@ void SimpleServerPlayer::update(){
 void SimpleServerPlayer::draw()
 {
     gl::clear();
-
-    gl::draw( player.getTexture() );
+	
+	gl::draw( player.getTexture(), getWindowBounds() );
 
 }
 
