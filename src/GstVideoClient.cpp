@@ -70,10 +70,13 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
     mServerRcvPort = _oscMasterRcvPort;
     mClientRcvPort = _oscSlaveRcvPort;
 
-    mOscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp(TCP_SENDER_PORT,mClockIp,mServerRcvPort));
+	using namespace asio::ip;
+	auto senderSocket  = std::make_shared<tcp::socket>( App::get()->io_service(),  tcp::v4()  );
+    senderSocket->set_option( socket_base::reuse_address(true) );
+	senderSocket->bind( tcp::endpoint( tcp::v4() , TCP_SENDER_PORT) );
+	mOscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp(senderSocket, tcp::endpoint( address::from_string( mClockIp ), mServerRcvPort )) );
     mOscSender->setSocketTransportErrorFn( std::bind( &GstVideoClient::socketErrorSender, this, std::placeholders::_1, std::placeholders::_2 ));
 	
-	mOscSender->bind();
     mOscSender->connect();
 
     mOscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(mClientRcvPort));
