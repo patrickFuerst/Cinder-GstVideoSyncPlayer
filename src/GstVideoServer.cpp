@@ -118,7 +118,7 @@ void GstVideoServer::load( const fs::path& path )
 	mCurrentFileName = path.filename().string();
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
-	
+
 	setupNetworkClock();
     
 }
