@@ -118,7 +118,7 @@ void GstVideoServer::load( const fs::path& path )
 	mCurrentFileName = path.filename().string();
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
-
+	
 	setupNetworkClock();
     
 }
@@ -205,6 +205,7 @@ void GstVideoServer::setupNetworkClock()
     ///> Be explicit on which clock we are going to use.
     gst_pipeline_use_clock(GST_PIPELINE(mGstPipeline), mGstClock);
     gst_pipeline_set_clock(GST_PIPELINE(mGstPipeline), mGstClock);
+	gst_pipeline_set_latency( GST_PIPELINE(mGstPipeline) , GST_SECOND * 0.5 );
 
 }
 
@@ -215,6 +216,8 @@ void GstVideoServer::resetBaseTime()
     ///> we disable here the internal handling of the base time.
     gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
     gst_element_set_base_time(mGstPipeline, mGstBaseTime);
+	gst_pipeline_set_latency( GST_PIPELINE(mGstPipeline) , GST_SECOND * 0.5 );
+	
 }
 //void GstVideoServer::draw( ofPoint _pos, float _width, float _height )
 //{
