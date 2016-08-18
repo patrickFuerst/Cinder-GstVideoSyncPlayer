@@ -55,13 +55,12 @@ GstVideoServer::~GstVideoServer()
 
 void GstVideoServer::movieEnded()
 {
-    CI_LOG_I( "GstVideoServer: Movie ended.. " );
-//    if( ! GstPlayer::isPaused() ){
-//        resetBaseTime();
-//        sendToClients( getLoopMsg() );
-//    }else{
-//        sendToClients( getEosMsg() );
-//    }
+   CI_LOG_I( "GstVideoServer: Movie ended.. " );
+   if( ! GstPlayer::isPaused() ){
+       sendToClients( getLoopMsg() );
+   }else{
+       sendToClients( getEosMsg() );
+   }
 
 
 }
@@ -81,7 +80,7 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
     mOscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(mServerRcvPort));
     mOscReceiver->setSocketTransportErrorFn( std::bind(&GstVideoServer::socketError, this, std::placeholders::_1,std::placeholders::_2 ) );
     mOscReceiver->setOnAcceptFn( std::bind(&GstVideoServer::clientAccepted, this, std::placeholders::_1,std::placeholders::_2) );
-    mOscReceiver->setListener("/client-loaded" , std::bind(&GstVideoServer::clientLoadedMessage , this, std::placeholders::_1 ));
+   // mOscReceiver->setListener("/client-loaded" , std::bind(&GstVideoServer::clientLoadedMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/client-exited" , std::bind(&GstVideoServer::clientExitedMessage , this, std::placeholders::_1 ));
     mOscReceiver->bind();
     mOscReceiver->listen();
@@ -132,7 +131,7 @@ void GstVideoServer::play()
 	
 	if( !GstPlayer::isPaused() ) return;
 
-    resetBaseTime();
+    //resetBaseTime();
     GstPlayer::play();
     sendToClients( getPlayMsg() );
 
@@ -176,9 +175,15 @@ void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifi
 					m.append((int64_t)mGstBaseTime);
 					sendToClient(m, socketRef->remote_endpoint().address().to_string());
 					
+					GstClockTime position = GstPlayer::getPositionNanos();
+					
 					m.clear();
 					m.setAddress("/load-file");
 					m.append(mCurrentFileName);
+					m.append((int64_t)mGstBaseTime);
+					m.append((int64_t)position);
+					m.append( GstPlayer::isPaused()  );
+
 					sendToClient(m , socketRef->remote_endpoint().address().to_string() );
 				}
 		);
@@ -216,17 +221,17 @@ void GstVideoServer::setupNetworkClock()
 
 }
 
-void GstVideoServer::resetBaseTime()
-{
-	CI_LOG_I("Reset Base Time" );
-	mGstBaseTime = gst_clock_get_time(mGstClock);
-    ///> Since we will provide a network clock for the synchronization
-    ///> we disable here the internal handling of the base time.
-    gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
-    gst_element_set_base_time(mGstPipeline, mGstBaseTime);
-	gst_pipeline_set_latency( GST_PIPELINE(mGstPipeline) , GST_SECOND * 0.5 );
+// void GstVideoServer::resetBaseTime()
+// {
+// 	CI_LOG_I("Reset Base Time" );
+// 	mGstBaseTime = gst_clock_get_time(mGstClock);
+//     ///> Since we will provide a network clock for the synchronization
+//     ///> we disable here the internal handling of the base time.
+//     gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
+//     gst_element_set_base_time(mGstPipeline, mGstBaseTime);
+// 	gst_pipeline_set_latency( GST_PIPELINE(mGstPipeline) , GST_SECOND * 0.5 );
 	
-}
+// }
 //void GstVideoServer::draw( ofPoint _pos, float _width, float _height )
 //{
 //    if( !m_videoPlayer.getPixels().isAllocated() || !m_videoPlayer.getTexture().isAllocated() ) return;
@@ -316,31 +321,31 @@ const osc::Message GstVideoServer::getEosMsg() const
     return m;
 }
 
-void GstVideoServer::clientLoadedMessage(const osc::Message &message ){
-
-    ///> If the video loading has failed on the master there is little we can do here...
-    if(!isLoaded()){
-        CI_LOG_E(" ERROR: Client loaded but master NOT !! Playback wont work properly... " );
-        return;
-    }
-    CI_LOG_I( "GstVideoServer: New client loaded" );
-
-//    osc::Message m;
-//    m.setAddress("/init-time");
-//    m.append((int64_t)mGstBaseTime);
-//    m.append((int64_t)mPos);
-//    sendToClient(m, message.getSenderIpAddress() );
-
-    ///> If the master is paused when the client connects pause the client also.
-    if( GstPlayer::isPaused() ){
-        sendToClient(getPauseMsg(), message.getSenderIpAddress() );
-        return;
-    } else{
-        sendToClient(getPlayMsg(), message.getSenderIpAddress() );
-        return;
-    };
-
-}
+//void GstVideoServer::clientLoadedMessage(const osc::Message &message ){
+//
+//    ///> If the video loading has failed on the master there is little we can do here...
+//    if(!isLoaded()){
+//        CI_LOG_E(" ERROR: Client loaded but master NOT !! Playback wont work properly... " );
+//        return;
+//    }
+//    CI_LOG_I( "GstVideoServer: New client loaded" );
+//
+////    osc::Message m;
+////    m.setAddress("/init-time");
+////    m.append((int64_t)mGstBaseTime);
+////    m.append((int64_t)mPos);
+////    sendToClient(m, message.getSenderIpAddress() );
+//
+//    ///> If the master is paused when the client connects pause the client also.
+//    if( GstPlayer::isPaused() ){
+//        sendToClient(getPauseMsg(), message.getSenderIpAddress() );
+//        return;
+//    } else{
+//        sendToClient(getPlayMsg(), message.getSenderIpAddress() );
+//        return;
+//    };
+//
+//}
 
 void GstVideoServer::clientExitedMessage(const osc::Message &message ){
 

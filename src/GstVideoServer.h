@@ -58,10 +58,10 @@ class GstVideoServer : public GstPlayer{
         const osc::Message              getLoopMsg() const;
         const osc::Message              getEosMsg() const;
 
-        void                            clientLoadedMessage(const osc::Message &message );
+        //void                            clientLoadedMessage(const osc::Message &message );
         void                            clientExitedMessage(const osc::Message &message );
 
-        void                            resetBaseTime();
+        //void                            resetBaseTime();
         void                            movieEnded();
 
     private:

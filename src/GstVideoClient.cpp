@@ -1,5 +1,6 @@
 
 #include "GstVideoClient.h"
+#include "cinder/Log.h"
 
 #define TCP_SENDER_PORT 10001
 using namespace asio;
@@ -87,7 +88,6 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
     mOscReceiver->setListener("/pause" , std::bind(&GstVideoClient::pauseMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/loop" , std::bind(&GstVideoClient::loopMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/eos" , std::bind(&GstVideoClient::eosMessage , this, std::placeholders::_1 ));
-	mOscReceiver->setListener("/init-time" , std::bind(&GstVideoClient::initTimeMessage , this, std::placeholders::_1 ));
 	mOscReceiver->setListener("/load-file" , std::bind(&GstVideoClient::loadFileMessage , this, std::placeholders::_1 ));
 
     mOscReceiver->bind();
@@ -122,13 +122,13 @@ void GstVideoClient::load( const fs::path& path )
 
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
-
-	osc::Message m;
-	 m.setAddress("/client-loaded");
-	 m.append(mUniqueClientId);
-	if( mOscSender ){
-		mOscSender->send(m);
-	 }
+//
+//	osc::Message m;
+//	 m.setAddress("/client-loaded");
+//	 m.append(mUniqueClientId);
+//	if( mOscSender ){
+//		mOscSender->send(m);
+//	 }
 }
 
 void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_t identifier )
@@ -212,22 +212,60 @@ void GstVideoClient::initTimeMessage(const osc::Message &message ){
 void GstVideoClient::loadFileMessage(const osc::Message &message ){
 	console() << "GstVideoClient: CLIENT ---> LOAD FILE: " << message.getArgString(0) << std::endl;
 	
-	auto fileName = message.getArgString(0);
-	
+    auto fileName = message.getArgString(0);
+    mGstBaseTime = ( GstClockTime) message.getArgInt64(1);
+	GstClockTime position = ( GstClockTime) message.getArgInt64(2);
+	bool isPaused =  message.getArgBool(3);
+
 	fs::path filePath = getAssetPath( fileName );
 	
 	if( ! filePath.empty() ) {
 		load( filePath );
-		///> whenever we load a new file, a new pipeline is created and we need
-		///> to set the network clock again
-		setClock();
+
 	}else{
 		console() << "Couldn't find file: " << fileName << std::endl;
+		return
 	}
+	
+	///> whenever we load a new file, a new pipeline is created and we need
+	///> to set the network clock again
+	setClock();
+	
+	/* Compensate preroll time if playing */
+	if (!isPaused) {
+		GstClockTime now = gst_clock_get_time (mGstClock);
+		if (now > (mGstBaseTime + position))
+			position = now - mGstBaseTime;
+	}
+	
+	/* If position is off by more than 0.5 sec, seek to that position
+ * (otherwise, just let the player skip) */
+	if (position > GST_SECOND/2) {
+		/* FIXME Query duration, so we don't seek after EOS */
+		if (!gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME,
+									  GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, position)) {
+			CI_LOG_E("Initial seekd failed, player will go faster instead");
+			position = 0;
+		}
+	}
+	
+	setBaseTime( mGstBaseTime + position );
+	
+	if( !isPaused ){
+		GstPlayer::play();
+	}
+
 }
 
 void GstVideoClient::playMessage(const osc::Message &message ){
     console() << "GstVideoClient: CLIENT ---> PLAY " << std::endl;
+
+  /* Compensate preroll time if playing */
+  // if (!client->paused) {
+  //   GstClockTime now = gst_clock_get_time (client->net_clock);
+  //   if (now > (client->base_time + client->position))
+  //     client->position = now - client->base_time;
+  // }
 
     ///> Set the base time of the slave network clock.
 	setBaseTime( message.getArgInt64( 0 ));
