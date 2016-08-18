@@ -1,5 +1,6 @@
 
 #include "GstVideoServer.h"
+#include "cinder/Log.h"
 
 #define TCP_SENDER_PORT 10000
 using namespace asio;
@@ -54,13 +55,13 @@ GstVideoServer::~GstVideoServer()
 
 void GstVideoServer::movieEnded()
 {
-    console() << "GstVideoServer: Movie ended.. " << std::endl;
-    if( ! GstPlayer::isPaused() ){
-        resetBaseTime();
-        sendToClients( getLoopMsg() );
-    }else{
-        sendToClients( getEosMsg() );
-    }
+    CI_LOG_I( "GstVideoServer: Movie ended.. " );
+//    if( ! GstPlayer::isPaused() ){
+//        resetBaseTime();
+//        sendToClients( getLoopMsg() );
+//    }else{
+//        sendToClients( getEosMsg() );
+//    }
 
 
 }
@@ -68,7 +69,7 @@ void GstVideoServer::movieEnded()
 void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort,  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort)
 {
     if( mInitialized ){
-        console() << " Player already initialized as MASTER with Ip : " << _clockIp << std::endl;
+		CI_LOG_E(" Player already initialized as MASTER with Ip : " << _clockIp );
         return;
     }
 
@@ -88,6 +89,8 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
     getEndedSignal().connect( std::bind( &GstVideoServer::movieEnded , this ));
 
     mInitialized = true;
+	CI_LOG_I(" Player initialized with Ip : " << _clockIp );
+	
 }
 
 //void GstVideoServer::loadAsync( std::string _path )
@@ -113,8 +116,8 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
 
 void GstVideoServer::load( const fs::path& path )
 {
-
-    GstPlayer::load(path.string());
+	CI_LOG_I("Load file: " << path.string()  );
+	GstPlayer::load(path.string());
 	mCurrentFileName = path.filename().string();
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
@@ -125,7 +128,9 @@ void GstVideoServer::load( const fs::path& path )
 
 void GstVideoServer::play()
 {
-    if( !GstPlayer::isPaused() ) return;
+	CI_LOG_I("Play" );
+	
+	if( !GstPlayer::isPaused() ) return;
 
     resetBaseTime();
     GstPlayer::play();
@@ -139,14 +144,14 @@ void GstVideoServer::socketError(  const asio::error_code &error, uint64_t ident
     if(clientEntry != mConnectedClients.end() ){
         auto& client = clientEntry->second;
 		auto address = client.getRemoteEndpoint().address().to_string();
-        console() << "Socket Error for Client with ip address " << address <<". Error:  " << error.message() << std::endl;
+		CI_LOG_E("Socket Error for Client with ip address " << address <<". Error:  " << error.message() );
 		client.shutdown();
         client.close();
 		mConnectedAdressedClients.erase(address);
         mConnectedClients.erase(clientEntry);
         mOscReceiver->closeConnection(identifier);
     }else{
-        console() << "Couldn't find client for id: " << identifier << " and errror: " << error.message() << std::endl;
+		CI_LOG_E( "Couldn't find client for id: " << identifier << " and errror: " << error.message() );
     }
 
 }
@@ -154,7 +159,7 @@ void GstVideoServer::socketError(  const asio::error_code &error, uint64_t ident
 void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifier  ){
 
     std::string addressString = socket->remote_endpoint().address().to_string();
-    console() << "New Client with ip address " << addressString <<" on port " << socket->local_endpoint().port() << std::endl;
+	CI_LOG_I( "New Client with ip address " << addressString <<" on port " << socket->local_endpoint().port() );
 	
 	auto element = mConnectedClients.emplace( std::piecewise_construct, std::forward_as_tuple(identifier) , std::forward_as_tuple(TCP_SENDER_PORT, addressString , mClientRcvPort)  );
 	//auto element = mConnectedClients.emplace( std::piecewise_construct, std::forward_as_tuple(addressString) , std::forward_as_tuple( socket )  );
@@ -164,7 +169,7 @@ void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifi
 		
 		element.first->second.setOnConnectFn(
 				[this]( osc::TcpSocketRef socketRef){
-					console() << "Connected to new Client." << std::endl;
+					CI_LOG_I( "Connected to new Client.");
 					
 					osc::Message m;
 					m.setAddress("/init-time");
@@ -183,14 +188,16 @@ void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifi
         element.first->second.connect();
 		
     }else{
-        console() << "Client with address: " << addressString << " already exists." << std::endl;
+		CI_LOG_W( "Client with address: " << addressString << " already exists." );
     }
 
 }
 
 void GstVideoServer::setupNetworkClock()
 {
-    ///> Remove any previously used clock.
+	CI_LOG_I("Setup Network Clock" );
+	
+	///> Remove any previously used clock.
     if(mGstClock) g_object_unref((GObject*) mGstClock);
     mGstClock = NULL;
 
@@ -211,7 +218,8 @@ void GstVideoServer::setupNetworkClock()
 
 void GstVideoServer::resetBaseTime()
 {
-    mGstBaseTime = gst_clock_get_time(mGstClock);
+	CI_LOG_I("Reset Base Time" );
+	mGstBaseTime = gst_clock_get_time(mGstClock);
     ///> Since we will provide a network clock for the synchronization
     ///> we disable here the internal handling of the base time.
     gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
@@ -239,9 +247,10 @@ void GstVideoServer::resetBaseTime()
 
 void GstVideoServer::sendToClients(const osc::Message &m)
 {
-    for( auto& clientKey : mConnectedClients){
+	CI_LOG_I("Send to Clients" );
+	for( auto& clientKey : mConnectedClients){
         auto& client = clientKey.second;
-        console() << "Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() << std::endl;
+		CI_LOG_I( "Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() );
         client.send(m);
     }
 }
@@ -255,10 +264,10 @@ void GstVideoServer::sendToClient( const osc::Message &m, const std::string &add
     const auto& clientKey = mConnectedAdressedClients.find(address);
     if(clientKey != mConnectedAdressedClients.end() ){
         auto& client = clientKey->second->second;
-        console() << "Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() << std::endl;
+		CI_LOG_I("Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() );
         client.send(m);
     } else{
-        console() << "Couldn't find client with address: " << address << std::endl;
+		CI_LOG_I( "Couldn't find client with address: " << address );
     }
 }
 
@@ -311,10 +320,10 @@ void GstVideoServer::clientLoadedMessage(const osc::Message &message ){
 
     ///> If the video loading has failed on the master there is little we can do here...
     if(!isLoaded()){
-        console() << " ERROR: Client loaded but master NOT !! Playback wont work properly... " << std::endl;
+        CI_LOG_E(" ERROR: Client loaded but master NOT !! Playback wont work properly... " );
         return;
     }
-    console() << "GstVideoServer: New client loaded" << std::endl;
+    CI_LOG_I( "GstVideoServer: New client loaded" );
 
 //    osc::Message m;
 //    m.setAddress("/init-time");
