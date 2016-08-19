@@ -9,12 +9,13 @@ using namespace asio::ip;
 GstVideoServer::GstVideoServer()
     : mGstClock(NULL)
     , mGstPipeline(NULL)
-    , mGstBaseTime(0)
+    //, mGstBaseTime(0)
     , mClockIp("127.0.0.1")
     , mClockPort(1234)
     , mServerRcvPort(mClockPort+1)
     , mClientRcvPort(mClockPort+2)
     , mInitialized(false)
+	, mLoop(false)
 {
     GstPlayer::initialize();
 }
@@ -55,14 +56,19 @@ GstVideoServer::~GstVideoServer()
 
 void GstVideoServer::movieEnded()
 {
-   CI_LOG_I( "GstVideoServer: Movie ended.. " );
-   if( ! GstPlayer::isPaused() ){
-       sendToClients( getLoopMsg() );
-   }else{
+	// movieEnded also gets called if we loop, so check if the player is still in playing state
+   if(  GstPlayer::isPaused() ){
+	   CI_LOG_I( "Movie ended ... " );
        sendToClients( getEosMsg() );
    }
 
 
+}
+void GstVideoServer::movieLooped()
+{
+	CI_LOG_I( "Movie looped ... " );
+	sendToClients( getLoopMsg() );
+	
 }
 
 void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort,  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort)
@@ -86,6 +92,7 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
     mOscReceiver->listen();
 
     getEndedSignal().connect( std::bind( &GstVideoServer::movieEnded , this ));
+    getLoopedSignal().connect( std::bind( &GstVideoServer::movieLooped , this ) );
 
     mInitialized = true;
 	CI_LOG_I(" Player initialized with Ip : " << _clockIp );
@@ -120,7 +127,6 @@ void GstVideoServer::load( const fs::path& path )
 	mCurrentFileName = path.filename().string();
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
-
 	setupNetworkClock();
     
 }
@@ -172,7 +178,7 @@ void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifi
 					
 					osc::Message m;
 					m.setAddress("/init-time");
-					m.append((int64_t)mGstBaseTime);
+					m.append((int64_t)gst_clock_get_time(mGstClock));
 					sendToClient(m, socketRef->remote_endpoint().address().to_string());
 					
 					GstClockTime position = GstPlayer::getPositionNanos();
@@ -180,7 +186,7 @@ void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifi
 					m.clear();
 					m.setAddress("/load-file");
 					m.append(mCurrentFileName);
-					m.append((int64_t)mGstBaseTime);
+					m.append((int64_t) gst_element_get_base_time(mGstPipeline));
 					m.append((int64_t)position);
 					m.append( GstPlayer::isPaused()  );
 
@@ -252,7 +258,7 @@ void GstVideoServer::setupNetworkClock()
 
 void GstVideoServer::sendToClients(const osc::Message &m)
 {
-	CI_LOG_I("Send to Clients" );
+	CI_LOG_I("Send to Clients " << m );
 	for( auto& clientKey : mConnectedClients){
         auto& client = clientKey.second;
 		CI_LOG_I( "Sending " << m.getAddress() << " to " << client.getRemoteEndpoint().address() << ":" << client.getRemoteEndpoint().port() );
@@ -300,17 +306,21 @@ const osc::Message GstVideoServer::getPauseMsg() const
 
 const osc::Message GstVideoServer::getPlayMsg() const
 {
+	// whenever we call get_base_time we need to be sure we are in playing state
+	// and it reflects the new base time after state changes
     osc::Message m;
     m.setAddress("/play");
-    m.append((int64_t)mGstBaseTime);
+    m.append((int64_t) gst_element_get_base_time(mGstPipeline));
     return m;
 }
 
 const osc::Message GstVideoServer::getLoopMsg() const
 {
+	// whenever we call get_base_time we need to be sure we are in playing state
+	// and it reflects the new base time after state changes
     osc::Message m;
     m.setAddress("/loop");
-    m.append((int64_t)mGstBaseTime);
+    m.append((int64_t) gst_element_get_base_time(mGstPipeline));
     return m;
 }
 
@@ -349,7 +359,7 @@ const osc::Message GstVideoServer::getEosMsg() const
 
 void GstVideoServer::clientExitedMessage(const osc::Message &message ){
 
-    console() <<"GstVideoServer: Disconnecting client" << std::endl;
+    CI_LOG_I("Disconnecting client" );
    // ClientKey _clientExit(_exitingClient, _exitingClientPort);
     //clientsIter it = mConnectedClients.find(_clientExit);
 
