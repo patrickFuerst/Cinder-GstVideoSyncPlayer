@@ -3,7 +3,7 @@
 #include "cinder/gl/gl.h"
 #include "cinder/linux/GstPlayer.h"
 #include <gst/net/gstnet.h>
-#include "Osc.h"
+#include "cinder/osc/Osc.h"
 
 using namespace ci;
 using namespace ci::app;
@@ -24,10 +24,10 @@ class GstVideoServer : public GstPlayer{
         void                            init( const std::string _clockIp, const uint16_t _clockPort, const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort);
         //void                            loadAsync( const fs::path& path );
         void                            load( const fs::path& path );
-        void                            play();
+	
+		void                            play();
         //void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
         //void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
-        //void                            loop( bool _loop );
         void                            pause();
         gl::Texture2dRef                getTexture();
         //void                          exit(ofEventArgs & args);
@@ -62,13 +62,14 @@ class GstVideoServer : public GstPlayer{
         void                            clientExitedMessage(const osc::Message &message );
 
         //void                            resetBaseTime();
-        void                            movieEnded();
+		void                            movieEnded();
+		void                            movieLooped();
 
     private:
 
         GstClock*                       mGstClock;         ///> The network clock.
         GstElement*                     mGstPipeline;      ///> The running pipeline.
-        GstClockTime                    mGstBaseTime;     ///> The base time.
+        //GstClockTime                    mGstBaseTime;     ///> The base time.
         std::string                     mClockIp;          ///> The IP of the server.
         uint16_t                        mClockPort;        ///> The port that should be used for the synchronization.
         uint16_t                        mServerRcvPort;    ///> osc communication.
@@ -77,4 +78,6 @@ class GstVideoServer : public GstPlayer{
         signals::Connection             mMovieEndedConnection;
 	
 		std::string 					mCurrentFileName;
+	
+		bool 							mLoop;
 };
