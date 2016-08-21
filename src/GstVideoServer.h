@@ -29,6 +29,7 @@ class GstVideoServer : public GstPlayer{
         //void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
         //void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
         void                            pause();
+        void                            stop();
         gl::Texture2dRef                getTexture();
         //void                          exit(ofEventArgs & args);
         //void                          setPixelFormat( const ofPixelFormat & _pixelFormat );
@@ -54,6 +55,7 @@ class GstVideoServer : public GstPlayer{
         void                            setupNetworkClock();
 
         const osc::Message              getPauseMsg() const;
+        const osc::Message              getStopMsg() const;
         const osc::Message              getPlayMsg() const;
         const osc::Message              getLoopMsg() const;
         const osc::Message              getEosMsg() const;

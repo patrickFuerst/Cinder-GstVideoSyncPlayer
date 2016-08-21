@@ -86,6 +86,7 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
 			std::bind( &GstVideoClient::socketErrorReceiver, this, std::placeholders::_1, std::placeholders::_2 ) );
     mOscReceiver->setListener("/play" , std::bind(&GstVideoClient::playMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/pause" , std::bind(&GstVideoClient::pauseMessage , this, std::placeholders::_1 ));
+    mOscReceiver->setListener("/stop" , std::bind(&GstVideoClient::stopMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/loop" , std::bind(&GstVideoClient::loopMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/eos" , std::bind(&GstVideoClient::eosMessage , this, std::placeholders::_1 ));
 	mOscReceiver->setListener("/load-file" , std::bind(&GstVideoClient::loadFileMessage , this, std::placeholders::_1 ));
@@ -309,6 +310,11 @@ void GstVideoClient::pauseMessage(const osc::Message &message ){
         CI_LOG_W("Pausing seek failed" );
     }
 
+}
+void GstVideoClient::stopMessage(const osc::Message &message ){
+
+    CI_LOG_I("CLIENT ---> STOP " );
+    stop();
 }
 void GstVideoClient::loopMessage(const osc::Message &message ){
 

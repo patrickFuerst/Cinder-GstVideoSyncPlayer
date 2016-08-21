@@ -42,6 +42,7 @@ class GstVideoClient : public GstPlayer{
 		
 		void                            playMessage(const osc::Message &message );
         void                            pauseMessage(const osc::Message &message );
+        void                            stopMessage(const osc::Message &message );
         void                            loopMessage(const osc::Message &message );
         void                            eosMessage(const osc::Message &message );
 		void                            initTimeMessage(const osc::Message &message );

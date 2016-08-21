@@ -296,11 +296,24 @@ void GstVideoServer::pause()
 	sendToClients( getPauseMsg() );
 }
 
+void GstVideoServer::stop()
+{
+    stop();
+    sendToClients( getStopMsg() );
+}
+
 const osc::Message GstVideoServer::getPauseMsg() const
 {
     osc::Message m;
     m.setAddress("/pause");
     m.append((int64_t)mPos);
+    return m;
+}
+
+const osc::Message GstVideoServer::getStopMsg() const
+{
+    osc::Message m;
+    m.setAddress("/stop");
     return m;
 }
 
