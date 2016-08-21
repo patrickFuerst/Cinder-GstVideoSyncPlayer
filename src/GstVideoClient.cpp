@@ -61,7 +61,7 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
 						   const uint16_t _oscSlaveRcvPort )
 {
     if( mInitialized ){
-        console() << " Player already initialized as SLAVE with Ip : " << _clockIp << std::endl;
+        CI_LOG_E("Player already initialized as Client with Ip : " << _clockIp );
         return;
     }
 
@@ -134,7 +134,7 @@ void GstVideoClient::load( const fs::path& path )
 
 void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_t identifier )
 {
-    console() << "Receiver Socket Error for ip address. Error:  " << error.message() << std::endl;
+    CI_LOG_W("Receiver Socket Error for ip address. Error:  " << error.message() );
     //close recv and sender
     // TODO add solution for reconnecting
     mOscReceiver->close();
@@ -144,9 +144,9 @@ void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_
 
 void GstVideoClient::socketErrorSender( const asio::error_code &error, const std::string &oscaddress )
 {
-	console() << "Sender Socket Error: " << error.message() << std::endl;
+	CI_LOG_W( "Sender Socket Error: " << error.message() );
 	if( oscaddress.length() > 0 )
-		console() << "Trying sending message: " << oscaddress << std::endl;
+		CI_LOG_I( "Trying sending message: " << oscaddress );
 	
 	//close recv and sender
 	// TODO add solution for reconnecting
@@ -182,7 +182,7 @@ void GstVideoClient::setClock()
 
 void GstVideoClient::setBaseTime( GstClockTime _baseTime )
 {
-	CI_LOG_I("setBaseTime called.");
+	CI_LOG_I(" setBaseTime called.");
 	
 	///> The arrived master base_time.
     mGstBaseTime = _baseTime;
@@ -209,7 +209,7 @@ void GstVideoClient::setBaseTime( GstClockTime _baseTime )
 //}
 
 void GstVideoClient::initTimeMessage(const osc::Message &message ){
-    console() <<"GstVideoClient:  CLIENT RECEIVED MASTER INIT TIME! " <<std::endl;
+    CI_LOG_I("CLIENT RECEIVED MASTER INIT TIME!");
 
     ///> Initial base time for the clients.
     ///> Set the slave network clock that is going to poll the master.
@@ -218,21 +218,21 @@ void GstVideoClient::initTimeMessage(const osc::Message &message ){
 }
 
 void GstVideoClient::loadFileMessage(const osc::Message &message ){
-	console() << "GstVideoClient: CLIENT ---> LOAD FILE: " << message.getArgString(0) << std::endl;
+	CI_LOG_I("CLIENT ---> LOAD FILE: " << message.getArgString(0) );
 	
     auto fileName = message.getArgString(0);
     mGstBaseTime = ( GstClockTime) message.getArgInt64(1);
 	GstClockTime position = ( GstClockTime) message.getArgInt64(2);
 	bool isPaused =  message.getArgBool(3);
 	
-	console() << "Set Pipeline to basetime" <<mGstBaseTime << ", position " << position << " in state pause " << isPaused << std::endl;
+	CI_LOG_I("Set Pipeline to basetime" <<mGstBaseTime << ", position " << position << " in state pause " << isPaused );
 	fs::path filePath = getAssetPath( fileName );
 	
 	if( ! filePath.empty() ) {
 		load( filePath );
 
 	}else{
-		console() << "Couldn't find file: " << fileName << std::endl;
+		CI_LOG_I("Couldn't find file: " << fileName );
 		return;
 	}
 	
@@ -241,14 +241,14 @@ void GstVideoClient::loadFileMessage(const osc::Message &message ){
 	setClock();
 	
 	if( !gst_clock_wait_for_sync(mGstClock, 3 * GST_SECOND) ){
-		console() << "Failed to sync clock!!!!!!" << std::endl;
+		CI_LOG_I("Failed to sync clock!!!!!!" );
 	}
 	
 	/* Compensate preroll time if playing */
 	if (!isPaused) {
 		GstClockTime now = gst_clock_get_time (mGstClock);
 		if (now > (mGstBaseTime + position)) {
-			console() << "We are behind by: " << (mGstBaseTime + position - now) / GST_SECOND << std::endl;
+			CI_LOG_I("We are behind by: " << (mGstBaseTime + position - now) / GST_SECOND );
 			position = now - mGstBaseTime;
 		}
 	}
@@ -272,7 +272,7 @@ void GstVideoClient::loadFileMessage(const osc::Message &message ){
 }
 
 void GstVideoClient::playMessage(const osc::Message &message ){
-    console() << "GstVideoClient: CLIENT ---> PLAY " << std::endl;
+    CI_LOG_I("CLIENT ---> PLAY " );
 
   /* Compensate preroll time if playing */
   // if (!client->paused) {
@@ -293,7 +293,7 @@ void GstVideoClient::playMessage(const osc::Message &message ){
 }
 void GstVideoClient::pauseMessage(const osc::Message &message ){
     mPos = message.getArgInt64(0);
-    console() << "GstVideoClient: CLIENT ---> PAUSE " << std::endl;
+    CI_LOG_I("CLIENT ---> PAUSE " );
 
     //gst_element_set_state(mGstPipeline, GST_STATE_PAUSED);
    // gst_element_get_state(mGstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
@@ -306,13 +306,13 @@ void GstVideoClient::pauseMessage(const osc::Message &message ){
     GstSeekFlags _flags = (GstSeekFlags) (GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE);
 
     if( !gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME, _flags, mPos )) {
-        console () << "Pausing seek failed" << std::endl;
+        CI_LOG_W("Pausing seek failed" );
     }
 
 }
 void GstVideoClient::loopMessage(const osc::Message &message ){
 
-    console() << "GstVideoClient: CLIENT ---> LOOP " << std::endl;
+    CI_LOG_I("CLIENT ---> LOOP " );
 	mGstBaseTime = message.getArgInt64( 0 );
 	GstClockTime position = 0;
 	
@@ -330,20 +330,20 @@ void GstVideoClient::loopMessage(const osc::Message &message ){
 //			position = 0;
 //		}
 //	}
-	console() << "Set Pipeline to basetime " <<mGstBaseTime << ", position " << position << std::endl;
+	CI_LOG_I("Set Pipeline to basetime " <<mGstBaseTime << ", position " << position );
 	
 	setBaseTime( mGstBaseTime + position);
 	seekToTime(0);
 	
 }
 void GstVideoClient::eosMessage(const osc::Message &message ){
-    console() << "GstVideoClient CLIENT ---> EOS " << std::endl;
+    CI_LOG_I("CLIENT ---> EOS " );
 
     ///> master stream has ended and there is no loop or source change in the near future
     stop();
 }
 //void GstVideoClient::initMessage(const osc::Message &message ){
-//    console() << "GstVideoClient CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
+//    CI_LOG_I("GstVideoClient CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
 //    mUniqueClientId = message.getArgInt32(0);
 //    mInitialized = true;
 //}
