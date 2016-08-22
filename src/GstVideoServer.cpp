@@ -285,7 +285,7 @@ void GstVideoServer::sendToClient( const osc::Message &m, const std::string &add
 
 void GstVideoServer::pause()
 {
-	stop();
+	GstPlayer::stop();
 	gst_element_query_position(GST_ELEMENT(mGstPipeline),GST_FORMAT_TIME,&mPos);
 	GstSeekFlags _flags = (GstSeekFlags) (GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE);
 	
@@ -298,7 +298,7 @@ void GstVideoServer::pause()
 
 void GstVideoServer::stop()
 {
-    stop();
+    GstPlayer::stop();
     sendToClients( getStopMsg() );
 }
 

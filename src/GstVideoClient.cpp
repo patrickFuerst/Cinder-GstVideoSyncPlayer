@@ -298,7 +298,7 @@ void GstVideoClient::pauseMessage(const osc::Message &message ){
 
     //gst_element_set_state(mGstPipeline, GST_STATE_PAUSED);
    // gst_element_get_state(mGstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-    stop();
+    GstPlayer::stop();
     ///> This needs more thinking but for now it gives acceptable results.
     ///> When we pause, we seek to the position of the master when paused was called.
     ///> If we dont do this there is a delay before the pipeline starts again i.e when hitting play() again after pause()..
@@ -314,7 +314,7 @@ void GstVideoClient::pauseMessage(const osc::Message &message ){
 void GstVideoClient::stopMessage(const osc::Message &message ){
 
     CI_LOG_I("CLIENT ---> STOP " );
-    stop();
+    GstPlayer::stop();
 }
 void GstVideoClient::loopMessage(const osc::Message &message ){
 
@@ -346,7 +346,7 @@ void GstVideoClient::eosMessage(const osc::Message &message ){
     CI_LOG_I("CLIENT ---> EOS " );
 
     ///> master stream has ended and there is no loop or source change in the near future
-    stop();
+    GstPlayer::stop();
 }
 //void GstVideoClient::initMessage(const osc::Message &message ){
 //    CI_LOG_I("GstVideoClient CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
