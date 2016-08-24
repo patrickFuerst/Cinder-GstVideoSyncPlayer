@@ -133,6 +133,38 @@ void GstVideoClient::load( const fs::path& path )
 //	 }
 }
 
+
+void GstVideoClient::update(){
+
+
+	if( mLoopFired ){
+	
+		mLoopFired = false;
+	//	/* Compensate preroll time if playing */
+	//	GstClockTime now = gst_clock_get_time (mGstClock);
+	//	if (now > (mGstBaseTime + position)) {
+	//		position = now - mGstBaseTime;
+	//	}
+	//
+	//	if (position > GST_SECOND/2) {
+	//		/* FIXME Query duration, so we don't seek after EOS */
+	//		if (!gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME,(GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE), position)) {
+	//			CI_LOG_E("Initial seekd failed, player will go faster instead");
+	//			position = 0;
+	//		}
+	//	}
+		CI_LOG_I("Handle Loop" );
+		CI_LOG_I("Set Pipeline to basetime " << mGstBaseTime );
+		
+		//setBaseTime( mGstBaseTime + position);
+		setBaseTime( mGstBaseTime );
+		seekToTime(0);
+
+	}
+
+
+}
+
 void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_t identifier )
 {
     CI_LOG_W("Receiver Socket Error for ip address. Error:  " << error.message() );
@@ -320,26 +352,7 @@ void GstVideoClient::loopMessage(const osc::Message &message ){
 
     CI_LOG_I("CLIENT ---> LOOP " );
 	mGstBaseTime = message.getArgInt64( 0 );
-	GstClockTime position = 0;
-	
-
-//	/* Compensate preroll time if playing */
-//	GstClockTime now = gst_clock_get_time (mGstClock);
-//	if (now > (mGstBaseTime + position)) {
-//		position = now - mGstBaseTime;
-//	}
-//
-//	if (position > GST_SECOND/2) {
-//		/* FIXME Query duration, so we don't seek after EOS */
-//		if (!gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME,(GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE), position)) {
-//			CI_LOG_E("Initial seekd failed, player will go faster instead");
-//			position = 0;
-//		}
-//	}
-	CI_LOG_I("Set Pipeline to basetime " <<mGstBaseTime << ", position " << position );
-	
-	setBaseTime( mGstBaseTime + position);
-	seekToTime(0);
+	mLoopFired = true; 
 	
 }
 void GstVideoClient::eosMessage(const osc::Message &message ){

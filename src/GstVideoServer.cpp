@@ -16,6 +16,7 @@ GstVideoServer::GstVideoServer()
     , mClientRcvPort(mClockPort+2)
     , mInitialized(false)
 	, mLoop(false)
+    , mLoopFired(false)
 {
     GstPlayer::initialize();
 }
@@ -67,8 +68,7 @@ void GstVideoServer::movieEnded()
 void GstVideoServer::movieLooped()
 {
 	CI_LOG_I( "Movie looped ... " );
-	sendToClients( getLoopMsg() );
-	
+    mLoopFired = true;	
 }
 
 void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort,  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort)
@@ -131,6 +131,16 @@ void GstVideoServer::load( const fs::path& path )
     
 }
 
+void GstVideoServer::update(){
+
+
+    if(mLoopFired){
+        sendToClients( getLoopMsg() );
+        mLoopFired = false;
+    }
+
+}
+
 void GstVideoServer::play()
 {
 	CI_LOG_I("Play" );
@@ -152,6 +162,8 @@ void GstVideoServer::socketError(  const asio::error_code &error, uint64_t ident
 		CI_LOG_E("Socket Error for Client with ip address " << address <<". Error:  " << error.message() );
 		client.shutdown();
         client.close();
+        // Removing client while it tries to send a message can result in SegFault
+        // TODO: Lock would be needed to avoid this
 		mConnectedAdressedClients.erase(address);
         mConnectedClients.erase(clientEntry);
         mOscReceiver->closeConnection(identifier);
