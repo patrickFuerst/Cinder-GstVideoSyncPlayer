@@ -214,7 +214,8 @@ void GstVideoClient::loadFileMessage(const osc::Message &message ){
 	
 	auto fileName = message.getArgString(0);
 	
-	fs::path filePath = getAssetPath( fileName );
+	//fs::path filePath = getAssetPath( fileName );
+	fs::path filePath = fs::path( filePath );
 	
 	if( ! filePath.empty() ) {
 		load( filePath );
