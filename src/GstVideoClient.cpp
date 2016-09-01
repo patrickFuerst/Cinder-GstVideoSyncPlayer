@@ -272,6 +272,7 @@ void GstVideoClient::loadFileMessage(const osc::Message &message ){
 		moduleId = "0"+moduleId;
 	}
 	std::string filePath = "/home/pi/videoWallContent/" + fileName + "_ID" + playerId + "_MD" + moduleId + ".mp4";
+	CI_LOG_I("Loading file: " << filePath);
 
 	
 	if( ! filePath.empty() ) {
