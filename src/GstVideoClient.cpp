@@ -1,6 +1,7 @@
 
 #include "GstVideoClient.h"
 #include "cinder/Log.h"
+#include "cinder/Json.h"
 
 #define TCP_SENDER_PORT 10001
 using namespace asio;
@@ -260,8 +261,18 @@ void GstVideoClient::loadFileMessage(const osc::Message &message ){
 	
 	CI_LOG_I("Set Pipeline to basetime" <<mGstBaseTime << ", position " << position << " in state pause " << isPaused );
 	
-	//fs::path filePath = getAssetPath( fileName );
-	fs::path filePath = fs::path( filePath );
+	JsonTree settings( loadFile( "/home/pi/vw-settings.json" ) );
+	std::string playerId = settings.getChild("playerId").getValue<std::string>();
+	std::string moduleId = settings.getChild("moduleId").getValue<std::string>();
+	
+	if( playerId.length() == 1){
+		playerId = "0"+playerId;
+	}
+	if( moduleId.length() == 1){
+		moduleId = "0"+moduleId;
+	}
+	std::string filePath = "/home/pi/videoWallContent/" + fileName + "_ID" + playerId + "_MD" + moduleId + ".mp4";
+
 	
 	if( ! filePath.empty() ) {
 		load( filePath );
