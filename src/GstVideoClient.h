@@ -3,7 +3,7 @@
 #include "cinder/gl/gl.h"
 #include "cinder/linux/GstPlayer.h"
 #include <gst/net/gstnet.h>
-#include "Osc.h"
+#include "cinder/osc/Osc.h"
 
 using namespace ci;
 using namespace ci::app;
@@ -19,6 +19,8 @@ class GstVideoClient : public GstPlayer{
 
         void                            init( const std::string _clockIp, const uint16_t _clockPort,
 											  const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort );
+        
+        void                            update(); 
         //void                            loadAsync( const fs::path& path );
         //void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
         //void                            drawSubsection( float _x, float _y, float _w, float _h, float _sx, float _sy );
@@ -42,6 +44,7 @@ class GstVideoClient : public GstPlayer{
 		
 		void                            playMessage(const osc::Message &message );
         void                            pauseMessage(const osc::Message &message );
+        void                            stopMessage(const osc::Message &message );
         void                            loopMessage(const osc::Message &message );
         void                            eosMessage(const osc::Message &message );
 		void                            initTimeMessage(const osc::Message &message );
@@ -62,5 +65,6 @@ class GstVideoClient : public GstPlayer{
         uint16_t                        mClientRcvPort;     ///> osc communication.
         int32_t                         mUniqueClientId;    ///> osc communication.
         gint64                          mPos;              ///> Position of the player.
-        signals::Connection             mMovieEndedConnection;
+        bool                            mLoopFired; 
+
 };

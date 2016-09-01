@@ -1,5 +1,6 @@
 
 #include "GstVideoClient.h"
+#include "cinder/Log.h"
 
 #define TCP_SENDER_PORT 10001
 using namespace asio;
@@ -21,7 +22,7 @@ GstVideoClient::GstVideoClient()
 
 GstVideoClient::~GstVideoClient()
 {
-	console() << "Shutdown Client!" << std::endl;
+	CI_LOG_I( "Shutdown Client!" );
 	
 	if( mInitialized ){
         osc::Message m("/client-exited");
@@ -60,7 +61,7 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
 						   const uint16_t _oscSlaveRcvPort )
 {
     if( mInitialized ){
-        console() << " Player already initialized as SLAVE with Ip : " << _clockIp << std::endl;
+        CI_LOG_E("Player already initialized as Client with Ip : " << _clockIp );
         return;
     }
 
@@ -85,10 +86,11 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
 			std::bind( &GstVideoClient::socketErrorReceiver, this, std::placeholders::_1, std::placeholders::_2 ) );
     mOscReceiver->setListener("/play" , std::bind(&GstVideoClient::playMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/pause" , std::bind(&GstVideoClient::pauseMessage , this, std::placeholders::_1 ));
+    mOscReceiver->setListener("/stop" , std::bind(&GstVideoClient::stopMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/loop" , std::bind(&GstVideoClient::loopMessage , this, std::placeholders::_1 ));
     mOscReceiver->setListener("/eos" , std::bind(&GstVideoClient::eosMessage , this, std::placeholders::_1 ));
-	mOscReceiver->setListener("/init-time" , std::bind(&GstVideoClient::initTimeMessage , this, std::placeholders::_1 ));
 	mOscReceiver->setListener("/load-file" , std::bind(&GstVideoClient::loadFileMessage , this, std::placeholders::_1 ));
+	mOscReceiver->setListener("/init-time" , std::bind(&GstVideoClient::initTimeMessage , this, std::placeholders::_1 ));
 
     mOscReceiver->bind();
     mOscReceiver->listen();
@@ -122,18 +124,50 @@ void GstVideoClient::load( const fs::path& path )
 
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
+//
+//	osc::Message m;
+//	 m.setAddress("/client-loaded");
+//	 m.append(mUniqueClientId);
+//	if( mOscSender ){
+//		mOscSender->send(m);
+//	 }
+}
 
-	osc::Message m;
-	 m.setAddress("/client-loaded");
-	 m.append(mUniqueClientId);
-	if( mOscSender ){
-		mOscSender->send(m);
-	 }
+
+void GstVideoClient::update(){
+
+
+	if( mLoopFired ){
+	
+		mLoopFired = false;
+	//	/* Compensate preroll time if playing */
+	//	GstClockTime now = gst_clock_get_time (mGstClock);
+	//	if (now > (mGstBaseTime + position)) {
+	//		position = now - mGstBaseTime;
+	//	}
+	//
+	//	if (position > GST_SECOND/2) {
+	//		/* FIXME Query duration, so we don't seek after EOS */
+	//		if (!gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME,(GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE), position)) {
+	//			CI_LOG_E("Initial seekd failed, player will go faster instead");
+	//			position = 0;
+	//		}
+	//	}
+		CI_LOG_I("Handle Loop" );
+		CI_LOG_I("Set Pipeline to basetime " << mGstBaseTime );
+		
+		//setBaseTime( mGstBaseTime + position);
+		setBaseTime( mGstBaseTime );
+		seekToTime(0);
+
+	}
+
+
 }
 
 void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_t identifier )
 {
-    console() << "Receiver Socket Error for ip address. Error:  " << error.message() << std::endl;
+    CI_LOG_W("Receiver Socket Error for ip address. Error:  " << error.message() );
     //close recv and sender
     // TODO add solution for reconnecting
     mOscReceiver->close();
@@ -143,9 +177,9 @@ void GstVideoClient::socketErrorReceiver( const asio::error_code &error, uint64_
 
 void GstVideoClient::socketErrorSender( const asio::error_code &error, const std::string &oscaddress )
 {
-	console() << "Sender Socket Error: " << error.message() << std::endl;
+	CI_LOG_W( "Sender Socket Error: " << error.message() );
 	if( oscaddress.length() > 0 )
-		console() << "Trying sending message: " << oscaddress << std::endl;
+		CI_LOG_I( "Trying sending message: " << oscaddress );
 	
 	//close recv and sender
 	// TODO add solution for reconnecting
@@ -154,16 +188,20 @@ void GstVideoClient::socketErrorSender( const asio::error_code &error, const std
 }
 void GstVideoClient::initClock( GstClockTime _baseTime )
 {
+	CI_LOG_I("Init Clock called.");
     ///> Remove any previously used clock.
     if(mGstClock) g_object_unref((GObject*) mGstClock);
     mGstClock = NULL;
 
     ///> Create the slave network clock with an initial time.
     mGstClock = gst_net_client_clock_new(NULL, mClockIp.c_str(), mClockPort, _baseTime);
+	GST_OBJECT_FLAG_SET(mGstClock , GST_CLOCK_FLAG_NEEDS_STARTUP_SYNC);
 	
 }
 void GstVideoClient::setClock()
 {
+	CI_LOG_I("setClock called.");
+	
 	///> Be explicit.
 	gst_pipeline_use_clock(GST_PIPELINE(mGstPipeline), mGstClock);
 	gst_pipeline_set_clock(GST_PIPELINE(mGstPipeline), mGstClock);
@@ -171,12 +209,15 @@ void GstVideoClient::setClock()
 	///> Disable internal handling of time and set the base time.
 	gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
 	gst_element_set_base_time(mGstPipeline,  mGstBaseTime);
+	gst_pipeline_set_latency( GST_PIPELINE(mGstPipeline) , GST_SECOND * 0.5 );
 	
 }
 
 void GstVideoClient::setBaseTime( GstClockTime _baseTime )
 {
-    ///> The arrived master base_time.
+	CI_LOG_I(" setBaseTime called.");
+	
+	///> The arrived master base_time.
     mGstBaseTime = _baseTime;
     gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
     gst_element_set_base_time(mGstPipeline,  mGstBaseTime);
@@ -201,7 +242,7 @@ void GstVideoClient::setBaseTime( GstClockTime _baseTime )
 //}
 
 void GstVideoClient::initTimeMessage(const osc::Message &message ){
-    console() <<"GstVideoClient:  CLIENT RECEIVED MASTER INIT TIME! " <<std::endl;
+    CI_LOG_I("CLIENT RECEIVED MASTER INIT TIME!");
 
     ///> Initial base time for the clients.
     ///> Set the slave network clock that is going to poll the master.
@@ -210,25 +251,70 @@ void GstVideoClient::initTimeMessage(const osc::Message &message ){
 }
 
 void GstVideoClient::loadFileMessage(const osc::Message &message ){
-	console() << "GstVideoClient: CLIENT ---> LOAD FILE: " << message.getArgString(0) << std::endl;
+	CI_LOG_I("CLIENT ---> LOAD FILE: " << message.getArgString(0) );
 	
-	auto fileName = message.getArgString(0);
+    auto fileName = message.getArgString(0);
+    mGstBaseTime = ( GstClockTime) message.getArgInt64(1);
+	GstClockTime position = ( GstClockTime) message.getArgInt64(2);
+	bool isPaused =  message.getArgBool(3);
+	
+	CI_LOG_I("Set Pipeline to basetime" <<mGstBaseTime << ", position " << position << " in state pause " << isPaused );
 	
 	//fs::path filePath = getAssetPath( fileName );
 	fs::path filePath = fs::path( filePath );
 	
 	if( ! filePath.empty() ) {
 		load( filePath );
-		///> whenever we load a new file, a new pipeline is created and we need
-		///> to set the network clock again
-		setClock();
+
 	}else{
-		console() << "Couldn't find file: " << fileName << std::endl;
+		CI_LOG_I("Couldn't find file: " << fileName );
+		return;
 	}
+	
+	///> whenever we load a new file, a new pipeline is created and we need
+	///> to set the network clock again
+	setClock();
+	
+	if( !gst_clock_wait_for_sync(mGstClock, 3 * GST_SECOND) ){
+		CI_LOG_I("Failed to sync clock!!!!!!" );
+	}
+	
+	/* Compensate preroll time if playing */
+	if (!isPaused) {
+		GstClockTime now = gst_clock_get_time (mGstClock);
+		if (now > (mGstBaseTime + position)) {
+			CI_LOG_I("We are behind by: " << (mGstBaseTime + position - now) / GST_SECOND );
+			position = now - mGstBaseTime;
+		}
+	}
+
+	/* If position is off by more than 0.5 sec, seek to that position
+ * (otherwise, just let the player skip) */
+	if (position > GST_SECOND/2) {
+		/* FIXME Query duration, so we don't seek after EOS */
+		if (!gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME,(GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE), position)) {
+			CI_LOG_E("Initial seekd failed, player will go faster instead");
+			position = 0;
+		}
+	}
+	
+	setBaseTime( mGstBaseTime + position);
+	
+	if( !isPaused ){
+		GstPlayer::play();
+	}
+
 }
 
 void GstVideoClient::playMessage(const osc::Message &message ){
-    console() << "GstVideoClient: CLIENT ---> PLAY " << std::endl;
+    CI_LOG_I("CLIENT ---> PLAY " );
+
+  /* Compensate preroll time if playing */
+  // if (!client->paused) {
+  //   GstClockTime now = gst_clock_get_time (client->net_clock);
+  //   if (now > (client->base_time + client->position))
+  //     client->position = now - client->base_time;
+  // }
 
     ///> Set the base time of the slave network clock.
 	setBaseTime( message.getArgInt64( 0 ));
@@ -242,11 +328,11 @@ void GstVideoClient::playMessage(const osc::Message &message ){
 }
 void GstVideoClient::pauseMessage(const osc::Message &message ){
     mPos = message.getArgInt64(0);
-    console() << "GstVideoClient: CLIENT ---> PAUSE " << std::endl;
+    CI_LOG_I("CLIENT ---> PAUSE " );
 
     //gst_element_set_state(mGstPipeline, GST_STATE_PAUSED);
    // gst_element_get_state(mGstPipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
-    stop();
+    GstPlayer::stop();
     ///> This needs more thinking but for now it gives acceptable results.
     ///> When we pause, we seek to the position of the master when paused was called.
     ///> If we dont do this there is a delay before the pipeline starts again i.e when hitting play() again after pause()..
@@ -255,29 +341,30 @@ void GstVideoClient::pauseMessage(const osc::Message &message ){
     GstSeekFlags _flags = (GstSeekFlags) (GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE);
 
     if( !gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME, _flags, mPos )) {
-        console () << "Pausing seek failed" << std::endl;
+        CI_LOG_W("Pausing seek failed" );
     }
 
 }
+void GstVideoClient::stopMessage(const osc::Message &message ){
+
+    CI_LOG_I("CLIENT ---> STOP " );
+    GstPlayer::stop();
+}
 void GstVideoClient::loopMessage(const osc::Message &message ){
 
-    console() << "GstVideoClient: CLIENT ---> LOOP " << std::endl;
-
-    ///> Set the slave base time.
-   // GstPlayer::stop();
-	setBaseTime( message.getArgInt64( 0 ));
-    seekToTime(0);
-    //GstPlayer::play();
-
+    CI_LOG_I("CLIENT ---> LOOP " );
+	mGstBaseTime = message.getArgInt64( 0 );
+	mLoopFired = true; 
+	
 }
 void GstVideoClient::eosMessage(const osc::Message &message ){
-    console() << "GstVideoClient CLIENT ---> EOS " << std::endl;
+    CI_LOG_I("CLIENT ---> EOS " );
 
     ///> master stream has ended and there is no loop or source change in the near future
-    stop();
+    GstPlayer::stop();
 }
 //void GstVideoClient::initMessage(const osc::Message &message ){
-//    console() << "GstVideoClient CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
+//    CI_LOG_I("GstVideoClient CLIENT ---> INIT with " << message.getArgInt32(0) << std::endl;
 //    mUniqueClientId = message.getArgInt32(0);
 //    mInitialized = true;
 //}
