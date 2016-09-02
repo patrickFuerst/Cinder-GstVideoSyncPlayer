@@ -159,6 +159,7 @@ void GstVideoClient::update(){
 		
 		//setBaseTime( mGstBaseTime + position);
 		setBaseTime( mGstBaseTime );
+		CI_LOG_I("Seek to 0" );
 		seekToTime(0);
 
 	}
@@ -254,32 +255,22 @@ void GstVideoClient::initTimeMessage(const osc::Message &message ){
 void GstVideoClient::loadFileMessage(const osc::Message &message ){
 	CI_LOG_I("CLIENT ---> LOAD FILE: " << message.getArgString(0) );
 	
-    auto fileName = message.getArgString(0);
+    auto filePath = fs::path(message.getArgString(0));
     mGstBaseTime = ( GstClockTime) message.getArgInt64(1);
 	GstClockTime position = ( GstClockTime) message.getArgInt64(2);
 	bool isPaused =  message.getArgBool(3);
 	
 	CI_LOG_I("Set Pipeline to basetime" <<mGstBaseTime << ", position " << position << " in state pause " << isPaused );
 	
-	JsonTree settings( loadFile( "/home/pi/vw-settings.json" ) );
-	std::string playerId = settings.getChild("playerId").getValue<std::string>();
-	std::string moduleId = settings.getChild("moduleId").getValue<std::string>();
 	
-	if( playerId.length() == 1){
-		playerId = "0"+playerId;
-	}
-	if( moduleId.length() == 1){
-		moduleId = "0"+moduleId;
-	}
-	std::string filePath = "/home/pi/videoWallContent/" + fileName + "_ID" + playerId + "_MD" + moduleId + ".mp4";
 	CI_LOG_I("Loading file: " << filePath);
 
 	
-	if( ! filePath.empty() ) {
+	if( fs::exists(filePath) ) {
 		load( filePath );
 
 	}else{
-		CI_LOG_I("Couldn't find file: " << fileName );
+		CI_LOG_I("Couldn't find file: " << filePath );
 		return;
 	}
 	
