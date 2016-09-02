@@ -24,7 +24,7 @@ class GstVideoServer : public GstPlayer{
         void                            init( const std::string _clockIp, const uint16_t _clockPort, const uint16_t _oscMasterRcvPort, const uint16_t _oscSlaveRcvPort);
         //void                            loadAsync( const fs::path& path );
 
-        void                            load( const fs::path& path, const std::string& fileName );
+        void                            load( const fs::path& path );
         void                            play();
 	    void                            update();
         //void                            draw( vec2 _pos, float _width = -1, float _height = -1 );
@@ -80,7 +80,7 @@ class GstVideoServer : public GstPlayer{
         gint64                          mPos;              ///> Position of the player.
         signals::Connection             mMovieEndedConnection;
 	
-		std::string 					mCurrentFileName;
+		std::string 					mCurrentFilePath;
 	
 		bool 							mLoop;
         bool                            mLoopFired; 

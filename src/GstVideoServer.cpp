@@ -120,11 +120,11 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
 //
 //}
 
-void GstVideoServer::load( const fs::path& path, const std::string& fileName )
+void GstVideoServer::load( const fs::path& path  )
 {
 	CI_LOG_I("Load file: " << path.string()  );
 	GstPlayer::load(path.string());
-	mCurrentFileName = fileName;
+	mCurrentFilePath = path.string();
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
 	setupNetworkClock();
@@ -197,7 +197,7 @@ void GstVideoServer::clientAccepted( osc::TcpSocketRef socket, uint64_t identifi
 					
 					m.clear();
 					m.setAddress("/load-file");
-					m.append(mCurrentFileName);
+					m.append(mCurrentFilePath);
 					m.append((int64_t) gst_element_get_base_time(mGstPipeline));
 					m.append((int64_t)position);
 					m.append( GstPlayer::isPaused()  );
