@@ -52,7 +52,6 @@ class GstVideoClient : public GstPlayer{
 	
 		void                            load( const fs::path& path );
 		
-		void                            movieEnded();
 
     private:
 
@@ -65,6 +64,6 @@ class GstVideoClient : public GstPlayer{
         uint16_t                        mClientRcvPort;     ///> osc communication.
         int32_t                         mUniqueClientId;    ///> osc communication.
         gint64                          mPos;              ///> Position of the player.
-        bool                            mLoopFired; 
+        bool                            mLoopMessage; 
 
 };

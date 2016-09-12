@@ -3,7 +3,6 @@
 #include "cinder/Log.h"
 #include "cinder/Json.h"
 
-#define TCP_SENDER_PORT 10001
 using namespace asio;
 using namespace asio::ip;
 
@@ -17,6 +16,7 @@ GstVideoClient::GstVideoClient()
     , mClientRcvPort(mClockPort+2)
     , mInitialized(false)
     , mUniqueClientId(0)
+    , mLoopMessage(false)
 {
     GstPlayer::initialize();
 }
@@ -75,13 +75,13 @@ void GstVideoClient::init( const std::string _clockIp, const uint16_t _clockPort
 	using namespace asio::ip;
 	auto senderSocket  = std::make_shared<tcp::socket>( App::get()->io_service(),  tcp::v4()  );
     senderSocket->set_option( socket_base::reuse_address(true) );
-	senderSocket->bind( tcp::endpoint( tcp::v4() , TCP_SENDER_PORT) );
+	senderSocket->bind( tcp::endpoint( tcp::v4() , mClientRcvPort) );
 	mOscSender = shared_ptr<osc::SenderTcp>(new osc::SenderTcp(senderSocket, tcp::endpoint( address::from_string( mClockIp ), mServerRcvPort )) );
     mOscSender->setSocketTransportErrorFn( std::bind( &GstVideoClient::socketErrorSender, this, std::placeholders::_1, std::placeholders::_2 ));
 	
     mOscSender->connect();
 
-    mOscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(mClientRcvPort));
+    mOscReceiver = shared_ptr<osc::ReceiverTcp>(new osc::ReceiverTcp(senderSocket));
 
     mOscReceiver->setSocketTransportErrorFn(
 			std::bind( &GstVideoClient::socketErrorReceiver, this, std::placeholders::_1, std::placeholders::_2 ) );
@@ -138,29 +138,15 @@ void GstVideoClient::load( const fs::path& path )
 void GstVideoClient::update(){
 
 
-	if( mLoopFired ){
+	if(  mLoopMessage ){
 	
-		mLoopFired = false;
-	//	/* Compensate preroll time if playing */
-	//	GstClockTime now = gst_clock_get_time (mGstClock);
-	//	if (now > (mGstBaseTime + position)) {
-	//		position = now - mGstBaseTime;
-	//	}
-	//
-	//	if (position > GST_SECOND/2) {
-	//		/* FIXME Query duration, so we don't seek after EOS */
-	//		if (!gst_element_seek_simple (mGstPipeline, GST_FORMAT_TIME,(GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE), position)) {
-	//			CI_LOG_E("Initial seekd failed, player will go faster instead");
-	//			position = 0;
-	//		}
-	//	}
-		CI_LOG_I("Handle Loop" );
-		CI_LOG_I("Set Pipeline to basetime " << mGstBaseTime );
+		mLoopMessage = false;
 		
-		//setBaseTime( mGstBaseTime + position);
-		setBaseTime( mGstBaseTime );
+		CI_LOG_I("Handle Loop" );
+		
 		CI_LOG_I("Seek to 0" );
-		seekToTime(0);
+		seekToTime(0);		
+		setBaseTime( mGstBaseTime  );
 
 	}
 
@@ -217,7 +203,7 @@ void GstVideoClient::setClock()
 
 void GstVideoClient::setBaseTime( GstClockTime _baseTime )
 {
-	CI_LOG_I(" setBaseTime called.");
+	CI_LOG_I(" setBaseTime to " << mGstBaseTime);
 	
 	///> The arrived master base_time.
     mGstBaseTime = _baseTime;
@@ -357,7 +343,7 @@ void GstVideoClient::loopMessage(const osc::Message &message ){
 
     CI_LOG_I("CLIENT ---> LOOP " );
 	mGstBaseTime = message.getArgInt64( 0 );
-	mLoopFired = true; 
+	mLoopMessage = true; 
 	
 }
 void GstVideoClient::eosMessage(const osc::Message &message ){
