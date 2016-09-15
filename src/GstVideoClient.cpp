@@ -125,6 +125,8 @@ void GstVideoClient::load( const fs::path& path )
 
     ///> Now that we have loaded we can grab the pipeline..
     mGstPipeline = GstPlayer::getPipeline();
+    CI_LOG_I("Wait till ready ");
+	gst_element_get_state( mGstPipeline, nullptr, nullptr, GST_CLOCK_TIME_NONE );
 //
 //	osc::Message m;
 //	 m.setAddress("/client-loaded");
@@ -145,8 +147,12 @@ void GstVideoClient::update(){
 		CI_LOG_I("Handle Loop" );
 		
 		CI_LOG_I("Seek to 0" );
-		seekToTime(0);		
+		
+		GstClockTime now = gst_clock_get_time (mGstClock);
+		GstClockTime diff = now - mGstBaseTime ;
+		CI_LOG_I("We are behind by: " << diff / GST_SECOND);
 		setBaseTime( mGstBaseTime  );
+		seekToTime(0);		
 
 	}
 

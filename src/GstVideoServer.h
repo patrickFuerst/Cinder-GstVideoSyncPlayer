@@ -4,11 +4,14 @@
 #include "cinder/linux/GstPlayer.h"
 #include <gst/net/gstnet.h>
 #include "cinder/osc/Osc.h"
+#include <chrono>
 
 using namespace ci;
 using namespace ci::app;
 using namespace gst::video;
 using namespace std;
+using namespace std::chrono;
+
 
 typedef std::map<uint64_t, osc::SenderTcp> Clients;
 typedef Clients::iterator clientsIter;
@@ -84,4 +87,6 @@ class GstVideoServer : public GstPlayer{
 	
 		bool 							mLoop;
         bool                            mLoopFired; 
+        system_clock::time_point mLoopTime;
+
 };

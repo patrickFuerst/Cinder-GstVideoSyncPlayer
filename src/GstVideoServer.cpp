@@ -92,8 +92,8 @@ void GstVideoServer::init( const std::string _clockIp, const uint16_t _clockPort
 	mOscReceiver->bind();
 	mOscReceiver->listen();
 
-	getEndedSignal().connect( std::bind( &GstVideoServer::movieEnded , this ));
-	getLoopedSignal().connect( std::bind( &GstVideoServer::movieLooped , this ) );
+	//getEndedSignal().connect( std::bind( &GstVideoServer::movieEnded , this ));
+	//getLoopedSignal().connect( std::bind( &GstVideoServer::movieLooped , this ) );
 
 	mInitialized = true;
 	CI_LOG_I(" Player initialized with Ip : " << _clockIp );
@@ -129,7 +129,9 @@ void GstVideoServer::load( const fs::path& path  )
 	///> Now that we have loaded we can grab the pipeline..
 	mGstPipeline = GstPlayer::getPipeline();
 	setupNetworkClock();
-	
+	CI_LOG_I("Wait till ready ");
+	gst_element_get_state( mGstPipeline, nullptr, nullptr, GST_CLOCK_TIME_NONE );
+
 }
 
 void GstVideoServer::update(){
@@ -138,6 +140,19 @@ void GstVideoServer::update(){
 	if(mLoopFired){
 		sendToClients( getLoopMsg() );
 		mLoopFired = false;
+	}
+
+
+	auto now = system_clock::now();
+	auto timePassed = duration_cast<seconds>(now - mLoopTime).count();
+	if( timePassed > 1  ){
+		CI_LOG_I("seeeeeekkking");
+		seekToTime(0);
+		//gst_element_seek_simple( mGstPipeline,  GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH , 0);
+		CI_LOG_I("Wait for seek ");
+		gst_element_get_state( mGstPipeline, nullptr, nullptr, GST_CLOCK_TIME_NONE );
+		sendToClients( getLoopMsg() );
+		mLoopTime = now;
 	}
 
 }
@@ -151,6 +166,7 @@ void GstVideoServer::play()
 	//resetBaseTime();
 	GstPlayer::play();
 	sendToClients( getPlayMsg() );
+	mLoopTime = system_clock::now();
 
 }
 
@@ -340,6 +356,8 @@ const osc::Message GstVideoServer::getLoopMsg() const
 	m.setAddress("/loop");
 	m.append((int64_t) gst_element_get_base_time(mGstPipeline));
 	CI_LOG_I( " sending base time " << gst_element_get_base_time(mGstPipeline) );
+	CI_LOG_I( " now is  " << gst_clock_get_time (mGstClock) );
+	CI_LOG_I( " diff is  " << (gst_clock_get_time (mGstClock) - gst_element_get_base_time(mGstPipeline)) / GST_SECOND );
 	return m;
 }
 
