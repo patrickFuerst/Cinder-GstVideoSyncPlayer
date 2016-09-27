@@ -59,7 +59,7 @@ void SimpleServerPlayer::setup(){
 		exit(-1);
 	}
 	
-    fs::path videoPath = getAssetPath("test.mp4");
+    fs::path videoPath = getAssetPath("bbb.mp4");
 
 	
 	///> Call the appropriate init function depending on if you are on a master or a slave.
